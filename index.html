@@ -1868,55 +1868,55 @@
             showToast(appState.lang === 'en' ? `Reservation status updated to [${newStatus}].` : `예약 상태가 [${newStatus}](으)로 변경되었습니다.`, 'success');
         }
 
-        function loadSampleData() {
-            const isEn = appState.lang === 'en';
-            const samples = [
-                {
-                    id: 'RES-SAMPLE-01',
-                    createdDate: '2026-09-15 14:20',
-                    eventDate: '2026-10-10 12:00 PM',
-                    customerName: '김민지',
-                    phoneNumber: '+65 9123 4567',
-                    babyName: '이지안',
-                    babyGender: '여아',
-                    address: '10 Marina Boulevard, Marina Bay Suites, Singapore 018983',
-                    dolTable: '프리미엄',
-                    foldingScreen: '병풍 2 (십장생도)',
-                    banner: '없음 (병풍중심)',
-                    flowers: '생화',
-                    riceCake: '진짜떡',
-                    options: { photo: true, video: false, hanbokMom: true, hanbokDad: true },
-                    specialNotes: '아기가 약간 졸려할 수 있어서 촬영은 초반에 진행 부탁드립니다.',
-                    totalAmount: 2900,
-                    status: '확정'
-                },
-                {
-                    id: 'RES-SAMPLE-02',
-                    createdDate: '2026-09-18 10:05',
-                    eventDate: '2026-10-17 11:30 AM',
-                    customerName: '박준형',
-                    phoneNumber: '+65 8234 5678',
-                    babyName: '박도현',
-                    babyGender: '남아',
-                    address: '26 Orchard Road, Singapore 238882',
-                    dolTable: '베이식',
-                    foldingScreen: '없음 (베이식)',
-                    banner: '책가도',
-                    flowers: '조화',
-                    riceCake: '모조떡',
-                    options: { photo: true, video: false, hanbokMom: false, hanbokDad: false },
-                    specialNotes: '엘리베이터가 커서 카트 진입 용이합니다.',
-                    totalAmount: 1550,
-                    status: '대기'
-                }
-            ];
+        // function loadSampleData() {
+        //     const isEn = appState.lang === 'en';
+        //     const samples = [
+        //         {
+        //             id: 'RES-SAMPLE-01',
+        //             createdDate: '2026-09-15 14:20',
+        //             eventDate: '2026-10-10 12:00 PM',
+        //             customerName: '김민지',
+        //             phoneNumber: '+65 9123 4567',
+        //             babyName: '이지안',
+        //             babyGender: '여아',
+        //             address: '10 Marina Boulevard, Marina Bay Suites, Singapore 018983',
+        //             dolTable: '프리미엄',
+        //             foldingScreen: '병풍 2 (십장생도)',
+        //             banner: '없음 (병풍중심)',
+        //             flowers: '생화',
+        //             riceCake: '진짜떡',
+        //             options: { photo: true, video: false, hanbokMom: true, hanbokDad: true },
+        //             specialNotes: '아기가 약간 졸려할 수 있어서 촬영은 초반에 진행 부탁드립니다.',
+        //             totalAmount: 2900,
+        //             status: '확정'
+        //         },
+        //         {
+        //             id: 'RES-SAMPLE-02',
+        //             createdDate: '2026-09-18 10:05',
+        //             eventDate: '2026-10-17 11:30 AM',
+        //             customerName: '박준형',
+        //             phoneNumber: '+65 8234 5678',
+        //             babyName: '박도현',
+        //             babyGender: '남아',
+        //             address: '26 Orchard Road, Singapore 238882',
+        //             dolTable: '베이식',
+        //             foldingScreen: '없음 (베이식)',
+        //             banner: '책가도',
+        //             flowers: '조화',
+        //             riceCake: '모조떡',
+        //             options: { photo: true, video: false, hanbokMom: false, hanbokDad: false },
+        //             specialNotes: '엘리베이터가 커서 카트 진입 용이합니다.',
+        //             totalAmount: 1550,
+        //             status: '대기'
+        //         }
+        //     ];
 
-            appState.reservations = samples;
-            localStorage.setItem('agijagi_reservations', JSON.stringify(samples));
-            renderCalendar();
-            renderAnalyticsAndList();
-            showToast(isEn ? 'Sample data loaded successfully!' : '샘플 데이터가 로드되었습니다!', 'success');
-        }
+        //     appState.reservations = samples;
+        //     localStorage.setItem('agijagi_reservations', JSON.stringify(samples));
+        //     renderCalendar();
+        //     renderAnalyticsAndList();
+        //     showToast(isEn ? 'Sample data loaded successfully!' : '샘플 데이터가 로드되었습니다!', 'success');
+        // }
 
         function showToast(message, type = 'info') {
             const container = document.getElementById('toastContainer');
