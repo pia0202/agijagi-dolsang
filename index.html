@@ -1,0 +1,1677 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>아기자기 돌상 - 싱가포르 전통 돌상 예약 및 관리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        coral: {
+                            50: '#fdf3f2',
+                            100: '#fce4e2',
+                            200: '#f9c9c5',
+                            300: '#f49e97',
+                            400: '#ee6e64',
+                            500: '#e84a3f',
+                            600: '#c8352b',
+                            700: '#a12921',
+                            800: '#7d221c',
+                            900: '#5c1914',
+                        },
+                        warmBg: '#fdfbf7',
+                    },
+                    fontFamily: {
+                        batang: ['Gowun Batang', 'serif'],
+                        sans: ['Noto Sans KR', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #fcf8f6;
+            font-family: 'Noto Sans KR', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            word-break: keep-all;
+            overflow-x: hidden;
+        }
+        .font-batang { font-family: 'Gowun Batang', serif; }
+        .custom-card {
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(8px);
+            border: 1px solid #f9c9c5;
+        }
+        .disabled-box {
+            opacity: 0.55;
+            background-color: #f3f4f6 !important;
+            pointer-events: none;
+        }
+
+        /* CALENDAR STYLES */
+        .cal-day-cell {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            user-select: none;
+            padding: 2px;
+        }
+        @media (min-width: 640px) {
+            .cal-day-cell {
+                border-radius: 0.75rem;
+                font-size: 0.85rem;
+            }
+        }
+        .cal-day-available {
+            background-color: #ffffff;
+            color: #1f2937;
+            border: 1px solid #e5e7eb;
+        }
+        .cal-day-available:active, .cal-day-available:hover {
+            border-color: #ee6e64;
+            background-color: #fdf3f2;
+            color: #c8352b;
+        }
+        .cal-day-selected {
+            background-color: #e84a3f !important;
+            color: #ffffff !important;
+            border-color: #c8352b !important;
+            box-shadow: 0 4px 6px -1px rgba(232, 74, 63, 0.3);
+        }
+        .cal-day-booked {
+            background-color: #dce6f2 !important;
+            color: #1e3a8a !important;
+            border: 1px solid #93c5fd !important;
+            cursor: not-allowed !important;
+            opacity: 0.95;
+        }
+        .cal-day-past {
+            background-color: #f3f4f6 !important;
+            color: #9ca3af !important;
+            border: 1px solid #e5e7eb !important;
+            cursor: not-allowed !important;
+            opacity: 0.6;
+        }
+
+        .toggle-switch-bg { transition: background-color 0.25s ease; }
+        .toggle-switch-circle { transition: transform 0.25s ease; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-gray-800 flex flex-col justify-between selection:bg-coral-200">
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: CUSTOMER RESERVATION PAGE          -->
+    <!-- ========================================== -->
+    <div id="customerView" class="flex flex-col min-h-screen justify-between">
+        <!-- HEADER -->
+        <header class="bg-coral-50 border-b border-coral-200 sticky top-0 z-30 shadow-sm no-print">
+            <div class="max-w-5xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3 flex items-center justify-between">
+                <div class="flex items-center space-x-2 sm:space-x-3 cursor-pointer" onclick="window.location.reload()">
+                    <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-coral-500 text-white flex items-center justify-center font-batang font-bold text-base sm:text-xl shadow-md shrink-0 border border-coral-200">
+                        돌
+                    </div>
+                    <div>
+                        <h1 class="text-sm sm:text-lg font-bold font-batang text-coral-900 tracking-tight leading-tight truncate">아기자기 돌상</h1>
+                        <p class="text-[9px] sm:text-xs text-coral-700 font-medium truncate">싱가포르 전통 돌상 & 한복 대여 신청</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <button type="button" onclick="copyShareLink()" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 transition-all flex items-center shadow-sm">
+                        <i data-lucide="share-2" class="w-3.5 h-3.5 mr-1 text-amber-900"></i>
+                        <span>링크 복사</span>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- MAIN CONTAINER -->
+        <main class="max-w-5xl mx-auto px-2.5 sm:px-4 py-3 sm:py-6 w-full flex-grow">
+            <section class="space-y-4 sm:space-y-5">
+                
+                <!-- Banner -->
+                <div class="bg-gradient-to-br from-coral-100 via-coral-50 to-amber-50 p-4 sm:p-6 rounded-2xl border border-coral-200 shadow-sm relative overflow-hidden">
+                    <div class="relative z-10 max-w-xl mx-auto text-center space-y-2">
+                        <div class="inline-flex items-center space-x-1 px-2.5 py-0.5 bg-coral-500 text-white text-[10px] sm:text-xs font-bold rounded-full shadow-sm">
+                            <i data-lucide="sparkles" class="w-3 h-3 mr-0.5"></i>
+                            <span>실시간 예약 신청 시스템</span>
+                        </div>
+                        <h2 class="text-lg sm:text-2xl font-bold font-batang text-coral-900 leading-snug">아기자기 전통 돌상 대여 신청서</h2>
+                        <p class="text-xs sm:text-sm text-gray-600 leading-relaxed">
+                            원하시는 구성을 선택하시면 견적이 자동 산출됩니다.<br>
+                            제출 시 실시간으로 예약이 접수되며 담당자가 확인 후 연락드립니다.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- FORM START -->
+                <form id="reservationForm" onsubmit="handleFormSubmit(event)" class="custom-card p-3.5 sm:p-7 rounded-2xl shadow-md space-y-5 sm:space-y-8">
+                    
+                    <!-- SECTION 1: Event & Customer Info -->
+                    <div class="space-y-3.5 sm:space-y-4">
+                        <div class="flex items-center space-x-2 border-b border-coral-200 pb-2">
+                            <i data-lucide="calendar-heart" class="w-4 h-4 sm:w-5 sm:h-5 text-coral-500 shrink-0"></i>
+                            <h3 class="text-sm sm:text-lg font-bold font-batang text-coral-900 truncate">1. 행사 날짜 선택 & 기본 정보</h3>
+                        </div>
+
+                        <!-- Interactive Calendar -->
+                        <div class="bg-amber-50/60 border border-coral-200 p-2.5 sm:p-4 rounded-2xl space-y-2.5">
+                            <div class="flex items-center justify-between pb-1">
+                                <div>
+                                    <h4 class="text-xs sm:text-sm font-bold text-coral-950 flex items-center">
+                                        <i data-lucide="calendar" class="w-3.5 h-3.5 mr-1 text-coral-500"></i>
+                                        <span>행사 예약 현황 달력</span>
+                                    </h4>
+                                    <p class="text-[10px] text-gray-500">원하시는 날짜를 터치하세요.</p>
+                                </div>
+                                
+                                <!-- Month Controller -->
+                                <div class="flex items-center space-x-1 bg-white px-2 py-1 rounded-xl border border-coral-200 shadow-sm shrink-0">
+                                    <button type="button" onclick="changeCalMonth(-1)" class="p-1 hover:bg-coral-100 rounded-lg text-coral-800 transition-all">
+                                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                                    </button>
+                                    <span id="calMonthTitle" class="text-xs sm:text-sm font-bold font-mono text-coral-900 px-1">2026년 10월</span>
+                                    <button type="button" onclick="changeCalMonth(1)" class="p-1 hover:bg-coral-100 rounded-lg text-coral-800 transition-all">
+                                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Calendar Grid Container -->
+                            <div class="bg-white p-2 rounded-xl border border-coral-200 shadow-inner">
+                                <div class="grid grid-cols-7 gap-1 text-center font-bold text-[10px] sm:text-xs text-gray-500 mb-1.5 border-b border-gray-100 pb-1">
+                                    <span class="text-red-500">일</span>
+                                    <span>월</span>
+                                    <span>화</span>
+                                    <span>수</span>
+                                    <span>목</span>
+                                    <span>금</span>
+                                    <span class="text-blue-500">토</span>
+                                </div>
+                                <div id="calendarDaysGrid" class="grid grid-cols-7 gap-1">
+                                    <!-- Dynamically Rendered Days -->
+                                </div>
+                            </div>
+
+                            <!-- Legend -->
+                            <div class="flex items-center justify-end space-x-3 text-[10px] text-gray-600 pt-0.5">
+                                <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-white border border-gray-300 mr-1"></span>가능</span>
+                                <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-coral-500 mr-1"></span>선택</span>
+                                <span class="flex items-center"><span class="w-2.5 h-2.5 rounded-full bg-blue-200 border border-blue-400 mr-1"></span>마감</span>
+                                <span class="flex items-center"><span class="w-2 h-2 rounded-full bg-gray-200 border border-gray-300 mr-1"></span>지난 날짜</span>
+                            </div>
+                        </div>
+
+                        <!-- Customer Inputs -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-1">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1 flex items-center justify-between">
+                                    <span>작성일</span>
+                                    <span class="text-[10px] text-gray-400">(자동)</span>
+                                </label>
+                                <input type="text" id="createdDateDisplay" readonly class="w-full px-3 py-2 bg-gray-100 text-gray-600 border border-gray-300 rounded-xl text-xs sm:text-sm font-semibold outline-none cursor-not-allowed">
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <label class="block text-xs font-semibold text-gray-700">행사 날짜 <span class="text-coral-500">*</span></label>
+                                        <span id="eventDateDayLabel" class="text-[11px] font-bold text-coral-600"></span>
+                                    </div>
+                                    <input type="date" id="eventDate" required class="w-full px-3 py-2 border border-coral-300 rounded-xl focus:ring-2 focus:ring-coral-400 focus:border-coral-400 outline-none text-xs sm:text-sm font-bold text-coral-900 bg-coral-50/40 transition-all" onchange="handleEventDateChange(true)">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-700 mb-1">시작 시간 <span class="text-coral-500">*</span></label>
+                                    <select id="eventTime" required class="w-full px-3 py-2 border border-coral-300 rounded-xl focus:ring-2 focus:ring-coral-400 focus:border-coral-400 outline-none text-xs sm:text-sm font-bold text-coral-900 bg-coral-50/40 transition-all" onchange="handleEventDateChange(false)">
+                                        <option value="10:00 AM">10:00 AM</option>
+                                        <option value="10:30 AM">10:30 AM</option>
+                                        <option value="11:00 AM">11:00 AM</option>
+                                        <option value="11:30 AM">11:30 AM</option>
+                                        <option value="12:00 PM" selected>12:00 PM</option>
+                                        <option value="12:30 PM">12:30 PM</option>
+                                        <option value="01:00 PM">01:00 PM</option>
+                                        <option value="01:30 PM">01:30 PM</option>
+                                        <option value="02:00 PM">02:00 PM</option>
+                                        <option value="02:30 PM">02:30 PM</option>
+                                        <option value="03:00 PM">03:00 PM</option>
+                                        <option value="03:30 PM">03:30 PM</option>
+                                        <option value="04:00 PM">04:00 PM</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">예약자 성함 <span class="text-coral-500">*</span></label>
+                                <input type="text" id="customerName" required placeholder="예: 홍길동" class="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all" oninput="updateSummaryPreview()">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">연락처 <span class="text-coral-500">*</span></label>
+                                <input type="tel" id="phoneNumber" required placeholder="예: +65 8123 4567" class="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all" oninput="updateSummaryPreview()">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">아기 이름 <span class="text-coral-500">*</span></label>
+                                <input type="text" id="babyName" required placeholder="예: 홍이도" class="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all" oninput="updateSummaryPreview()">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-700 mb-1">아기 성별 <span class="text-coral-500">*</span></label>
+                                <input type="text" id="babyGender" required placeholder="예: 남아, 여아 등" class="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all" oninput="updateSummaryPreview()">
+                            </div>
+
+                            <!-- Singapore Address -->
+                            <div class="sm:col-span-2 space-y-2 bg-coral-50/50 p-3 sm:p-4 rounded-xl border border-coral-200">
+                                <label class="block text-xs font-bold text-coral-900 flex items-center justify-between">
+                                    <span class="flex items-center"><i data-lucide="map-pin" class="w-3.5 h-3.5 mr-1 text-coral-600"></i> 싱가포르 행사 주소 <span class="text-coral-500 ml-0.5">*</span></span>
+                                    <span class="text-[10px] text-coral-700 font-normal">우편번호(6자리)</span>
+                                </label>
+
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                    <div class="sm:col-span-1">
+                                        <div class="flex space-x-1.5">
+                                            <input type="text" id="postalCode" maxlength="6" pattern="[0-9]*" placeholder="Postal Code (예: 238881)" class="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm font-semibold transition-all" oninput="handlePostalCodeInput(this)">
+                                            <button type="button" onclick="searchSingaporeAddress()" class="px-3 py-2 bg-coral-500 hover:bg-coral-600 text-white rounded-xl text-xs font-bold shrink-0 transition-all flex items-center shadow-sm">
+                                                <span>조회</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="sm:col-span-2">
+                                        <input type="text" id="baseAddress" required placeholder="기본 주소 (우편번호 입력 시 자동 검색)" class="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all" oninput="updateSummaryPreview()">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <input type="text" id="detailAddress" placeholder="상세 주소 (예: #12-34, Condo Name/Ballroom)" class="w-full px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all" oninput="updateSummaryPreview()">
+                                </div>
+                                <p id="addressStatus" class="text-[10px] sm:text-xs text-gray-500">※ 우편번호 6자리 입력 시 기본 주소가 자동 검색됩니다.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 2: Options -->
+                    <div class="space-y-3.5 sm:space-y-4">
+                        <div class="flex items-center justify-between border-b border-coral-200 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="sparkles" class="w-4 h-4 sm:w-5 sm:h-5 text-coral-500 shrink-0"></i>
+                                <h3 class="text-sm sm:text-lg font-bold font-batang text-coral-900 truncate">2. 돌상 스타일 & 구성 선택</h3>
+                            </div>
+                            <span class="text-[10px] text-coral-700 font-medium bg-coral-100 px-2 py-0.5 rounded-full">SGD 표기</span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                            <div class="bg-gray-50/80 p-3 rounded-xl border border-gray-200 hover:border-coral-300 transition-all">
+                                <label class="block text-xs font-bold text-coral-900 mb-1 flex items-center justify-between">
+                                    <span>1) 돌상 종류 <span class="text-coral-500">*</span></span>
+                                    <span class="text-xs font-bold text-coral-700" id="badge-dolTable">SGD 950</span>
+                                </label>
+                                <select id="dolTable" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm font-semibold text-gray-800" onchange="handleDolTableChange()">
+                                    <option value="베이식">베이식 (SGD 950) - 기본 단아한 구성</option>
+                                    <option value="프리미엄" selected>프리미엄 (SGD 1,250) - 오방색 풍성한 구성</option>
+                                    <option value="프레스티지">프레스티지 (SGD 1,550) - 최고급 궁중 돌상</option>
+                                </select>
+                            </div>
+
+                            <div id="wrapper-foldingScreen" class="bg-gray-50/80 p-3 rounded-xl border border-gray-200 transition-all">
+                                <label class="block text-xs font-bold text-coral-900 mb-1 flex items-center justify-between">
+                                    <span>2) 병풍 선택</span>
+                                    <span class="text-[10px] text-gray-500" id="badge-foldingScreen">포함</span>
+                                </label>
+                                <select id="foldingScreen" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm font-medium" onchange="updateSummaryPreview()">
+                                    <option value="병풍 1 (수묵화)">병풍 1 (은은한 자수 수묵화)</option>
+                                    <option value="병풍 2 (십장생도)">병풍 2 (화려한 십장생 모란도)</option>
+                                </select>
+                                <p class="text-[10px] text-coral-600 font-medium mt-1 hidden" id="foldingScreenDisabledNotice">⚠️ 베이식 돌상은 병풍 제외 항목입니다.</p>
+                            </div>
+
+                            <div id="wrapper-banner" class="bg-gray-50/80 p-3 rounded-xl border border-gray-200 transition-all">
+                                <label class="block text-xs font-bold text-coral-900 mb-1 flex items-center justify-between">
+                                    <span>3) 현수막 선택</span>
+                                    <span class="text-[10px] text-gray-500" id="badge-banner">포함</span>
+                                </label>
+                                <select id="banner" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm font-medium" onchange="updateSummaryPreview()">
+                                    <option value="책가도">책가도 (학업과 지혜 서화)</option>
+                                    <option value="벚꽃">벚꽃 (화사한 봄꽃 플라워)</option>
+                                </select>
+                                <p class="text-[10px] text-coral-600 font-medium mt-1 hidden" id="bannerDisabledNotice">⚠️ 프리미엄/프레스티지는 병풍 중심 구성입니다.</p>
+                            </div>
+
+                            <div class="bg-gray-50/80 p-3 rounded-xl border border-gray-200 hover:border-coral-300 transition-all">
+                                <label class="block text-xs font-bold text-coral-900 mb-1 flex items-center justify-between">
+                                    <span>4) 꽃 구성</span>
+                                    <span class="text-[10px] font-bold text-coral-700" id="badge-flowers">+SGD 0</span>
+                                </label>
+                                <select id="flowers" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm font-medium" onchange="updateSummaryPreview()">
+                                    <option value="조화">조화 (고급 인조 실크 플라워 - 기본)</option>
+                                    <option value="생화">생화 (당일 수급 프리미엄 생화 +SGD 600)</option>
+                                </select>
+                            </div>
+
+                            <div class="bg-gray-50/80 p-3 rounded-xl border border-gray-200 hover:border-coral-300 transition-all sm:col-span-2">
+                                <label class="block text-xs font-bold text-coral-900 mb-1 flex items-center justify-between">
+                                    <span>5) 떡 구성</span>
+                                    <span class="text-[10px] font-bold text-coral-700" id="badge-riceCake">+SGD 0</span>
+                                </label>
+                                <select id="riceCake" class="w-full px-2.5 py-2 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm font-medium" onchange="updateSummaryPreview()">
+                                    <option value="모조떡">모조떡 (촬영 전용 고급 모형 떡 세트 - 기본)</option>
+                                    <option value="진짜떡">진짜떡 (수제 백설기 / 수수팥떡 / 오색송편 +SGD 350)</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 3: Photography -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between border-b border-coral-200 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="camera" class="w-4 h-4 sm:w-5 sm:h-5 text-coral-500 shrink-0"></i>
+                                <h3 class="text-sm sm:text-lg font-bold font-batang text-coral-900 truncate">3. 촬영 서비스 (선택)</h3>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div id="card-photo" onclick="toggleOption('photo')" class="cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-2 shadow-sm select-none">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <div id="switch-photo" class="toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center">
+                                            <div id="circle-photo" class="toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0"></div>
+                                        </div>
+                                        <span class="font-bold text-xs sm:text-sm text-coral-950">사진 (Photography)</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-coral-700 bg-coral-100 px-2 py-0.5 rounded-md">+SGD 600</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 border-t border-gray-100 pt-1.5">• 원본 JPEG 전체 + 보정본 30~50여장 제공</p>
+                            </div>
+
+                            <div id="card-video" onclick="toggleOption('video')" class="cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-2 shadow-sm select-none">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <div id="switch-video" class="toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center">
+                                            <div id="circle-video" class="toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0"></div>
+                                        </div>
+                                        <span class="font-bold text-xs sm:text-sm text-coral-950">동영상 (Videography)</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-coral-700 bg-coral-100 px-2 py-0.5 rounded-md">+SGD 1,000</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 border-t border-gray-100 pt-1.5">• 숏폼 하이라이트 2개 + 8분 편집영상 1개</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 4: Hanbok -->
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between border-b border-coral-200 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <i data-lucide="shirt" class="w-4 h-4 sm:w-5 sm:h-5 text-coral-500 shrink-0"></i>
+                                <h3 class="text-sm sm:text-lg font-bold font-batang text-coral-900 truncate">4. 한복 대여 서비스 (선택)</h3>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="p-3.5 rounded-xl border-2 border-coral-300 bg-coral-50/40 space-y-1.5 shadow-sm">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-xs sm:text-sm text-coral-950 flex items-center">
+                                        <i data-lucide="sparkle" class="w-3.5 h-3.5 text-coral-500 mr-1"></i> 돌쟁이 한복
+                                    </span>
+                                    <span class="text-xs font-bold text-coral-700 bg-coral-100 px-2 py-0.5 rounded-md">기본포함</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 border-t border-coral-100 pt-1">아기 최고급 silk 전통/퓨전 한복 세트 (굴레/복건 포함)</p>
+                            </div>
+
+                            <div id="card-hanbokMom" onclick="toggleOption('hanbokMom')" class="cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-1.5 shadow-sm select-none">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <div id="switch-hanbokMom" class="toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center">
+                                            <div id="circle-hanbokMom" class="toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0"></div>
+                                        </div>
+                                        <span class="font-bold text-xs sm:text-sm text-coral-950">엄마 한복</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-coral-700 bg-coral-100 px-2 py-0.5 rounded-md">+SGD 250</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 border-t border-gray-100 pt-1">파스텔 당의/치마 및 노리개 풀세트</p>
+                            </div>
+
+                            <div id="card-hanbokDad" onclick="toggleOption('hanbokDad')" class="cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-1.5 shadow-sm select-none">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <div id="switch-hanbokDad" class="toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center">
+                                            <div id="circle-hanbokDad" class="toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0"></div>
+                                        </div>
+                                        <span class="font-bold text-xs sm:text-sm text-coral-950">아빠 한복</span>
+                                    </div>
+                                    <span class="text-xs font-bold text-coral-700 bg-coral-100 px-2 py-0.5 rounded-md">+SGD 200</span>
+                                </div>
+                                <p class="text-[11px] text-gray-600 border-t border-gray-100 pt-1">단아한 도포/쾌자 세트</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 5: Special Requests -->
+                    <div class="space-y-3">
+                        <div class="flex items-center space-x-2 border-b border-coral-200 pb-2">
+                            <i data-lucide="message-square" class="w-4 h-4 sm:w-5 sm:h-5 text-coral-500 shrink-0"></i>
+                            <h3 class="text-sm sm:text-lg font-bold font-batang text-coral-900 truncate">5. 요청 사항 및 추가 메모</h3>
+                        </div>
+
+                        <div>
+                            <textarea id="specialNotes" rows="3" placeholder="추가 요청 사항이나 아기의 특이사항, 행사장 진입 방법 등을 자유롭게 적어주세요." class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-xs sm:text-sm transition-all"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- SECTION 6: Summary & Submit -->
+                    <div class="bg-gradient-to-r from-coral-500 to-coral-600 p-4 sm:p-6 rounded-2xl text-white shadow-xl space-y-4">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-coral-400 pb-3 gap-2">
+                            <div>
+                                <span class="text-xs text-coral-100 font-medium">예상 견적 명세서</span>
+                                <h4 id="summaryTitle" class="text-lg sm:text-xl font-bold font-batang">돌상 예약 신청 내용</h4>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs text-coral-100">최종 총 금액</span>
+                                <div class="text-2xl sm:text-3xl font-extrabold font-mono tracking-tight" id="totalAmountDisplay">SGD 1,250</div>
+                            </div>
+                        </div>
+
+                        <div id="breakdownContainer" class="text-xs sm:text-sm space-y-1.5 text-coral-100 bg-coral-700/30 p-3 rounded-xl border border-coral-400/30">
+                            <!-- Calculated dynamically -->
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                            <div class="text-xs text-coral-100 space-y-0.5">
+                                <p>• 예약금 안내: <span class="font-bold text-white">SGD 200</span> (신청서 확인 후 계좌/PayNow 안내)</p>
+                                <p>• 행사 7일 전까지 일정 변경 및 무료 취소가 가능합니다.</p>
+                            </div>
+                            <button type="submit" class="w-full sm:w-auto px-6 py-3.5 bg-amber-400 hover:bg-amber-300 text-amber-950 font-bold text-sm sm:text-base rounded-xl shadow-lg transition-all active:scale-95 flex items-center justify-center space-x-2 shrink-0">
+                                <i data-lucide="send" class="w-4 h-4"></i>
+                                <span>예약 신청서 제출하기</span>
+                            </button>
+                        </div>
+                    </div>
+
+                </form>
+            </section>
+        </main>
+
+        <!-- FOOTER WITH ADMIN LINK AT BOTTOM -->
+        <footer class="bg-white border-t border-gray-200 py-6 text-center text-xs text-gray-500 no-print mt-8 space-y-2">
+            <p>© 2026 Agijagi Singapore. All rights reserved.</p>
+            <div>
+                <button type="button" onclick="switchToAdminView()" class="inline-flex items-center text-[11px] text-gray-400 hover:text-coral-600 transition-colors py-1 px-3 rounded-md hover:bg-coral-50">
+                    <i data-lucide="lock" class="w-3 h-3 mr-1 text-gray-400"></i>
+                    <span>관리자 대시보드</span>
+                </button>
+            </div>
+        </footer>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: ADMIN DASHBOARD VIEW              -->
+    <!-- ========================================== -->
+    <div id="adminView" class="hidden flex-col min-h-screen">
+
+        <!-- PASSWORD AUTH MODAL GATE (Internal overlay in Admin View) -->
+        <div id="authGate" class="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-coral-200 space-y-4 text-center relative">
+                <div class="w-12 h-12 bg-coral-100 text-coral-600 rounded-2xl flex items-center justify-center mx-auto text-xl font-bold font-batang">
+                    <i data-lucide="lock" class="w-6 h-6 text-coral-600"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg font-bold font-batang text-coral-950">관리자 대시보드 인증</h2>
+                    <p class="text-xs text-gray-500 mt-1">접속을 위해 관리자 비밀번호를 입력하세요.</p>
+                </div>
+
+                <form onsubmit="verifyPassword(event)" class="space-y-3 pt-2">
+                    <div>
+                        <input type="password" id="adminPasswordInput" placeholder="비밀번호 입력 (기본: 1234)" required autofocus class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-center font-mono text-base tracking-widest">
+                        <p id="authErrorMsg" class="text-xs text-coral-600 font-bold mt-1.5 hidden">⚠️ 비밀번호가 일치하지 않습니다.</p>
+                    </div>
+                    <button type="submit" class="w-full py-2.5 bg-coral-500 hover:bg-coral-600 text-white font-bold text-sm rounded-xl shadow-md transition-all">
+                        로그인하기
+                    </button>
+                </form>
+
+                <div class="pt-2 border-t border-gray-100">
+                    <button type="button" onclick="switchToCustomerView()" class="text-xs text-gray-500 hover:text-coral-600 flex items-center justify-center mx-auto">
+                        <i data-lucide="arrow-left" class="w-3.5 h-3.5 mr-1"></i> 고객 예약 신청 페이지로 돌아가기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN ADMIN CONTENT (Hidden until authenticated) -->
+        <div id="adminMainContent" class="hidden flex-col flex-grow">
+
+            <!-- HEADER -->
+            <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md no-print">
+                <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg bg-coral-500 text-white flex items-center justify-center font-batang font-bold text-lg">
+                            돌
+                        </div>
+                        <div>
+                            <h1 class="text-base sm:text-lg font-bold font-batang text-white flex items-center">
+                                <span>아기자기 돌상 관리자</span>
+                                <span class="ml-2 text-[10px] bg-emerald-500 text-white font-mono px-2 py-0.5 rounded-full flex items-center">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping mr-1"></span>실시간 연동중
+                                </span>
+                            </h1>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2">
+                        <button type="button" onclick="switchToCustomerView()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all flex items-center">
+                            <i data-lucide="external-link" class="w-3.5 h-3.5 mr-1 text-coral-400"></i> 고객용 페이지
+                        </button>
+                        <button type="button" onclick="logoutAdmin()" class="px-3 py-1.5 bg-coral-600 hover:bg-coral-700 text-white rounded-xl text-xs font-semibold transition-all flex items-center">
+                            <i data-lucide="log-out" class="w-3.5 h-3.5 mr-1"></i> 로그아웃
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- DASHBOARD BODY -->
+            <main class="max-w-6xl mx-auto px-3 sm:px-4 py-5 w-full space-y-6 flex-grow">
+
+                <!-- STATS FILTER & SUMMARY BAR -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="p-2 bg-coral-100 text-coral-600 rounded-xl">
+                            <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900 font-batang">월간 / 연간 실시간 집계 현황</h2>
+                            <p class="text-xs text-slate-500">조회할 기간을 선택하시면 자동 집계됩니다.</p>
+                        </div>
+                    </div>
+
+                    <!-- Year / Month Pickers -->
+                    <div class="flex items-center space-x-2">
+                        <!-- Year Select -->
+                        <select id="statYearSelect" onchange="renderAnalyticsAndList()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-coral-400">
+                            <option value="ALL">전체 연도</option>
+                            <option value="2026" selected>2026년</option>
+                            <option value="2025">2025년</option>
+                        </select>
+
+                        <!-- Month Select -->
+                        <select id="statMonthSelect" onchange="renderAnalyticsAndList()" class="px-3 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs sm:text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-coral-400">
+                            <option value="ALL" selected>전체 월 (연간 통계)</option>
+                            <option value="01">1월</option>
+                            <option value="02">2월</option>
+                            <option value="03">3월</option>
+                            <option value="04">4월</option>
+                            <option value="05">5월</option>
+                            <option value="06">6월</option>
+                            <option value="07">7월</option>
+                            <option value="08">8월</option>
+                            <option value="09">9월</option>
+                            <option value="10">10월</option>
+                            <option value="11">11월</option>
+                            <option value="12">12월</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- KEY PERFORMANCE METRICS CARDS -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs text-slate-500 font-semibold flex items-center">
+                            <i data-lucide="circle-dollar-sign" class="w-3.5 h-3.5 text-coral-500 mr-1"></i> 총 매출액 (SGD)
+                        </span>
+                        <p id="stat-total-revenue" class="text-xl sm:text-2xl font-extrabold font-mono text-coral-600">SGD 0</p>
+                        <p class="text-[10px] text-slate-400">선택 기간 접수 총액</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs text-slate-500 font-semibold flex items-center">
+                            <i data-lucide="check-check" class="w-3.5 h-3.5 text-emerald-500 mr-1"></i> 확정된 매출
+                        </span>
+                        <p id="stat-confirmed-revenue" class="text-xl sm:text-2xl font-extrabold font-mono text-emerald-600">SGD 0</p>
+                        <p class="text-[10px] text-slate-400" id="stat-confirmed-count-sub">0건 확정 완료</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs text-slate-500 font-semibold flex items-center">
+                            <i data-lucide="clock" class="w-3.5 h-3.5 text-amber-500 mr-1"></i> 대기중 예약
+                        </span>
+                        <p id="stat-pending-count" class="text-xl sm:text-2xl font-extrabold font-mono text-amber-600">0건</p>
+                        <p class="text-[10px] text-slate-400" id="stat-pending-revenue-sub">예상 SGD 0</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-1">
+                        <span class="text-xs text-slate-500 font-semibold flex items-center">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5 text-slate-500 mr-1"></i> 총 예약 신청건
+                        </span>
+                        <p id="stat-total-count" class="text-xl sm:text-2xl font-extrabold font-mono text-slate-800">0건</p>
+                        <p class="text-[10px] text-slate-400" id="stat-cancelled-count-sub">취소 0건 포함</p>
+                    </div>
+                </div>
+
+                <!-- ANALYTICS BREAKDOWN SECTION -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                    
+                    <!-- Dol Table Popularity -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <h3 class="text-xs font-bold text-slate-900 flex items-center">
+                            <i data-lucide="pie-chart" class="w-4 h-4 mr-1 text-coral-500"></i> 돌상 스타일 선호도
+                        </h3>
+                        <div id="analytics-dolTable" class="space-y-2 text-xs">
+                            <!-- Rendered via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Flower & Rice Cake Choice -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <h3 class="text-xs font-bold text-slate-900 flex items-center">
+                            <i data-lucide="flower" class="w-4 h-4 mr-1 text-coral-500"></i> 생화/조화 및 떡 구성
+                        </h3>
+                        <div id="analytics-addons" class="space-y-2 text-xs">
+                            <!-- Rendered via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Media & Hanbok Adoption -->
+                    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <h3 class="text-xs font-bold text-slate-900 flex items-center">
+                            <i data-lucide="camera" class="w-4 h-4 mr-1 text-coral-500"></i> 촬영 스냅 및 한복 추가율
+                        </h3>
+                        <div id="analytics-services" class="space-y-2 text-xs">
+                            <!-- Rendered via JS -->
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RESERVATION LIST CONTROLS & SEARCH -->
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                        <div class="flex items-center space-x-2 w-full sm:w-auto">
+                            <i data-lucide="list-filter" class="w-4 h-4 text-coral-600"></i>
+                            <h3 class="text-sm font-bold text-slate-900 font-batang">예약 신청 내역 관리</h3>
+                        </div>
+
+                        <div class="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                            <div class="relative w-full sm:w-64">
+                                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
+                                <input type="text" id="adminSearchInput" oninput="renderAnalyticsAndList()" placeholder="고객명, 아기이름, 연락처 검색..." class="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-coral-400">
+                            </div>
+
+                            <select id="adminStatusFilter" onchange="renderAnalyticsAndList()" class="w-full sm:w-auto px-3 py-1.5 text-xs border border-slate-300 rounded-xl outline-none font-medium bg-slate-50">
+                                <option value="ALL">전체 상태</option>
+                                <option value="대기">대기중</option>
+                                <option value="확정">예약확정</option>
+                                <option value="취소">취소건</option>
+                            </select>
+
+                            <button type="button" onclick="loadSampleData()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold shrink-0 transition-all">
+                                샘플데이터
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Reservation Cards List -->
+                    <div id="adminReservationList" class="space-y-3 pt-1">
+                        <!-- Dynamically Rendered -->
+                    </div>
+                </div>
+
+            </main>
+
+            <!-- FOOTER -->
+            <footer class="bg-white border-t border-slate-200 py-4 text-center text-xs text-slate-500 no-print">
+                <p>© 2026 Agijagi Singapore Admin Dashboard. All rights reserved.</p>
+            </footer>
+
+        </div>
+    </div>
+
+    <!-- COMMON MODAL: Receipt / Reservation Detail Modal -->
+    <div id="modalDetail" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-3 hidden">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl relative border border-coral-200">
+            <button type="button" onclick="closeModal('modalDetail')" class="absolute right-4 top-4 p-1 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+            <div id="modalDetailContent"></div>
+        </div>
+    </div>
+
+    <!-- TOAST CONTAINER -->
+    <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none"></div>
+
+    <!-- FIREBASE MODULE & REALTIME SYNC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'agijagi-dol-app';
+        let db = null;
+        let auth = null;
+        let isFirebaseReady = false;
+
+        const syncChannel = new BroadcastChannel('agijagi_sync_channel');
+
+        syncChannel.onmessage = (event) => {
+            if (event.data && (event.data.type === 'NEW_RESERVATION' || event.data.type === 'STATUS_UPDATE')) {
+                const stored = JSON.parse(localStorage.getItem('agijagi_reservations') || '[]');
+                window.appState.reservations = stored;
+                window.renderCalendar();
+                if (window.isAuthenticated && !document.getElementById('adminView').classList.contains('hidden')) {
+                    window.renderAnalyticsAndList();
+                    if (event.data.type === 'NEW_RESERVATION') {
+                        window.showToast(`🔔 새 예약 신청이 접수되었습니다! [${event.data.payload.customerName}님]`, 'success');
+                    }
+                }
+            }
+        };
+
+        async function initFirebaseApp() {
+            try {
+                if (typeof __firebase_config !== 'undefined' && __firebase_config) {
+                    const firebaseConfig = JSON.parse(__firebase_config);
+                    const app = initializeApp(firebaseConfig);
+                    db = getFirestore(app);
+                    auth = getAuth(app);
+
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+                    isFirebaseReady = true;
+
+                    const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'reservations');
+                    onSnapshot(colRef, (snapshot) => {
+                        let resList = [];
+                        snapshot.forEach((doc) => resList.push(doc.data()));
+                        if (resList.length > 0) {
+                            window.appState.reservations = resList;
+                            localStorage.setItem('agijagi_reservations', JSON.stringify(resList));
+                            window.renderCalendar();
+                            if (window.isAuthenticated && !document.getElementById('adminView').classList.contains('hidden')) {
+                                window.renderAnalyticsAndList();
+                            }
+                        }
+                    }, (err) => console.warn("Firestore listen error:", err));
+                }
+            } catch(e) {
+                console.warn("Firebase fallback:", e);
+            }
+        }
+
+        window.saveReservationToCloud = async function(reservation) {
+            let stored = JSON.parse(localStorage.getItem('agijagi_reservations') || '[]');
+            stored.unshift(reservation);
+            localStorage.setItem('agijagi_reservations', JSON.stringify(stored));
+            syncChannel.postMessage({ type: 'NEW_RESERVATION', payload: reservation });
+
+            if (isFirebaseReady && db) {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'reservations', reservation.id);
+                    await setDoc(docRef, reservation);
+                } catch(e) {
+                    console.error("Firestore save error:", e);
+                }
+            }
+        };
+
+        window.updateReservationStatusInCloud = async function(id, newStatus) {
+            const res = window.appState.reservations.find(r => r.id === id);
+            if (res) {
+                res.status = newStatus;
+                localStorage.setItem('agijagi_reservations', JSON.stringify(window.appState.reservations));
+                syncChannel.postMessage({ type: 'STATUS_UPDATE', id, newStatus });
+
+                if (isFirebaseReady && db) {
+                    try {
+                        const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'reservations', id);
+                        await setDoc(docRef, res, { merge: true });
+                    } catch(e) {
+                        console.error("Firestore status update error:", e);
+                    }
+                }
+            }
+        };
+
+        initFirebaseApp();
+    </script>
+
+    <!-- CORE LOGIC & CONTROLLERS -->
+    <script>
+        const PRICING = {
+            dolTable: { '베이식': 950, '프리미엄': 1250, '프레스티지': 1550 },
+            flowers: { '조화': 0, '생화': 600 },
+            riceCake: { '모조떡': 0, '진짜떡': 350 },
+            photo: 600,
+            video: 1000,
+            hanbokMom: 250,
+            hanbokDad: 200
+        };
+
+        const initialDate = new Date();
+        const initYyyy = initialDate.getFullYear();
+        const initMm = String(initialDate.getMonth() + 1).padStart(2, '0');
+        const initDd = String(initialDate.getDate()).padStart(2, '0');
+
+        window.appState = {
+            calYear: initialDate.getFullYear(),
+            calMonth: initialDate.getMonth(),
+            selectedDate: `${initYyyy}-${initMm}-${initDd}`,
+            options: { photo: false, video: false, hanbokMom: false, hanbokDad: false },
+            reservations: []
+        };
+
+        window.isAuthenticated = false;
+        const BOOKED_DATES = ['2026-10-10', '2026-10-11', '2026-10-17', '2026-10-18', '2026-10-25'];
+
+        /* ---------------------------------- */
+        /* VIEW SWITCHING LOGIC               */
+        /* ---------------------------------- */
+        function switchToAdminView() {
+            document.getElementById('customerView').classList.add('hidden');
+            document.getElementById('adminView').classList.remove('hidden');
+            document.getElementById('adminView').classList.add('flex');
+
+            if (sessionStorage.getItem('agijagi_admin_authed') === 'true') {
+                window.isAuthenticated = true;
+                document.getElementById('authGate').classList.add('hidden');
+                document.getElementById('adminMainContent').classList.remove('hidden');
+                document.getElementById('adminMainContent').classList.add('flex');
+                renderAnalyticsAndList();
+            } else {
+                window.isAuthenticated = false;
+                document.getElementById('authGate').classList.remove('hidden');
+                document.getElementById('adminMainContent').classList.add('hidden');
+            }
+            lucide.createIcons();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function switchToCustomerView() {
+            document.getElementById('adminView').classList.add('hidden');
+            document.getElementById('adminView').classList.remove('flex');
+            document.getElementById('customerView').classList.remove('hidden');
+            renderCalendar();
+            lucide.createIcons();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function verifyPassword(event) {
+            event.preventDefault();
+            const input = document.getElementById('adminPasswordInput').value;
+            const errEl = document.getElementById('authErrorMsg');
+
+            if (input === '1234') {
+                window.isAuthenticated = true;
+                sessionStorage.setItem('agijagi_admin_authed', 'true');
+                document.getElementById('authGate').classList.add('hidden');
+                document.getElementById('adminMainContent').classList.remove('hidden');
+                document.getElementById('adminMainContent').classList.add('flex');
+                
+                renderAnalyticsAndList();
+                showToast('🔑 관리자로 로그인하였습니다.', 'success');
+            } else {
+                errEl.classList.remove('hidden');
+            }
+        }
+
+        function logoutAdmin() {
+            window.isAuthenticated = false;
+            sessionStorage.removeItem('agijagi_admin_authed');
+            switchToCustomerView();
+            showToast('로그아웃 되었습니다.', 'info');
+        }
+
+        /* ---------------------------------- */
+        /* CALENDAR LOGIC                     */
+        /* ---------------------------------- */
+        function renderCalendar() {
+            const year = appState.calYear;
+            const month = appState.calMonth;
+            const grid = document.getElementById('calendarDaysGrid');
+            const title = document.getElementById('calMonthTitle');
+
+            if (!grid || !title) return;
+
+            title.textContent = `${year}년 ${month + 1}월`;
+            grid.innerHTML = '';
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let prevMonth = month - 1, prevYear = year;
+            if (prevMonth < 0) { prevMonth = 11; prevYear -= 1; }
+
+            let nextMonth = month + 1, nextYear = year;
+            if (nextMonth > 11) { nextMonth = 0; nextYear += 1; }
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+            const prevMonthDays = new Date(prevYear, prevMonth + 1, 0).getDate();
+
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const d = prevMonthDays - i;
+                const dateKey = `${prevYear}-${String(prevMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                createCalCell(grid, d, dateKey, new Date(prevYear, prevMonth, d), today, true);
+            }
+
+            for (let d = 1; d <= totalDays; d++) {
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                createCalCell(grid, d, dateKey, new Date(year, month, d), today, false);
+            }
+
+            const totalCells = grid.children.length;
+            const remaining = (totalCells % 7 === 0) ? 0 : 7 - (totalCells % 7);
+            for (let i = 1; i <= remaining; i++) {
+                const dateKey = `${nextYear}-${String(nextMonth + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                createCalCell(grid, i, dateKey, new Date(nextYear, nextMonth, i), today, true);
+            }
+        }
+
+        function createCalCell(grid, dayNum, dateKey, cellDate, today, isOtherMonth) {
+            cellDate.setHours(0, 0, 0, 0);
+            const isPast = cellDate < today;
+            const isBooked = BOOKED_DATES.includes(dateKey) || appState.reservations.some(r => r.eventDate && r.eventDate.startsWith(dateKey) && r.status === '확정');
+            const isSelected = appState.selectedDate === dateKey;
+
+            const cell = document.createElement('div');
+            const opacity = isOtherMonth ? 'opacity-50' : '';
+
+            if (isPast) {
+                cell.className = `cal-day-cell cal-day-past ${opacity}`;
+                cell.innerHTML = `<span>${dayNum}</span><span class="text-[9px] font-normal text-gray-400">지남</span>`;
+            } else if (isBooked) {
+                cell.className = `cal-day-cell cal-day-booked ${opacity}`;
+                cell.innerHTML = `<span>${dayNum}</span><span class="text-[9px] font-normal">마감</span>`;
+            } else if (isSelected) {
+                cell.className = `cal-day-cell cal-day-selected ${opacity}`;
+                cell.innerHTML = `<span>${dayNum}</span><span class="text-[9px] font-normal">선택</span>`;
+                cell.onclick = () => selectCalDate(dateKey);
+            } else {
+                cell.className = `cal-day-cell cal-day-available ${opacity}`;
+                cell.innerHTML = `<span>${dayNum}</span><span class="text-[9px] font-normal text-gray-400">가능</span>`;
+                cell.onclick = () => selectCalDate(dateKey);
+            }
+            grid.appendChild(cell);
+        }
+
+        function changeCalMonth(delta) {
+            appState.calMonth += delta;
+            if (appState.calMonth < 0) { appState.calMonth = 11; appState.calYear -= 1; }
+            else if (appState.calMonth > 11) { appState.calMonth = 0; appState.calYear += 1; }
+            renderCalendar();
+        }
+
+        function selectCalDate(dateStr) {
+            appState.selectedDate = dateStr;
+            document.getElementById('eventDate').value = dateStr;
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                appState.calYear = parseInt(parts[0]);
+                appState.calMonth = parseInt(parts[1]) - 1;
+            }
+            renderCalendar();
+            updateSummaryPreview();
+            showToast(`📅 행사 날짜가 [${formatDateWithDay(dateStr)}] 로 지정되었습니다.`, 'info');
+        }
+
+        function handleEventDateChange(fromInput) {
+            if (fromInput) {
+                const val = document.getElementById('eventDate').value;
+                if (val) {
+                    appState.selectedDate = val;
+                    const parts = val.split('-');
+                    appState.calYear = parseInt(parts[0]);
+                    appState.calMonth = parseInt(parts[1]) - 1;
+                    renderCalendar();
+                }
+            }
+            updateSummaryPreview();
+        }
+
+        /* ---------------------------------- */
+        /* CUSTOMER FORM CONTROLLERS          */
+        /* ---------------------------------- */
+        function toggleOption(key) {
+            appState.options[key] = !appState.options[key];
+            const isChecked = appState.options[key];
+            const card = document.getElementById(`card-${key}`);
+            const switchBg = document.getElementById(`switch-${key}`);
+            const circle = document.getElementById(`circle-${key}`);
+
+            if (card && switchBg && circle) {
+                if (isChecked) {
+                    card.className = "cursor-pointer p-3.5 rounded-xl border-2 border-coral-500 bg-coral-50/60 shadow-md transition-all space-y-1.5 select-none";
+                    switchBg.className = "toggle-switch-bg w-9 h-5 bg-coral-500 rounded-full p-0.5 flex items-center";
+                    circle.className = "toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-4";
+                } else {
+                    card.className = "cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-1.5 shadow-sm select-none";
+                    switchBg.className = "toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center";
+                    circle.className = "toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0";
+                }
+            }
+            updateSummaryPreview();
+        }
+
+        function handlePostalCodeInput(el) {
+            el.value = el.value.replace(/[^0-9]/g, '');
+            if (el.value.length === 6) searchSingaporeAddress();
+        }
+
+        async function searchSingaporeAddress() {
+            const postal = document.getElementById('postalCode').value.trim();
+            const statusEl = document.getElementById('addressStatus');
+            const baseAddrInput = document.getElementById('baseAddress');
+
+            if (postal.length !== 6) {
+                showToast('우편번호 6자리를 정확히 입력해주세요.', 'error');
+                return;
+            }
+
+            if (statusEl) statusEl.textContent = '⏳ 싱가포르 주소 검색 중...';
+
+            try {
+                const res = await fetch(`https://www.onemap.gov.sg/api/common/elastic/search?searchVal=${postal}&returnGeom=Y&getAddrDetails=Y&pageNum=1`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.results && data.results.length > 0) {
+                        const item = data.results[0];
+                        const addrStr = `${item.ROAD_NAME}${item.BUILDING !== 'N/A' ? ' ' + item.BUILDING : ''}, Singapore ${item.POSTAL}`;
+                        baseAddrInput.value = addrStr;
+                        if (statusEl) statusEl.textContent = `✅ 검색 완료: ${item.ADDRESS}`;
+                        showToast('주소가 성공적으로 검색되었습니다.', 'success');
+                        updateSummaryPreview();
+                        return;
+                    }
+                }
+            } catch(e) {}
+
+            const mockAddresses = {
+                '238881': '435 Orchard Road, Wisma Atria, Singapore 238881',
+                '098185': '1 Harbourfront Walk, VivoCity, Singapore 098185',
+                '188065': '200 Victoria Street, Bugis Junction, Singapore 188065'
+            };
+
+            const found = mockAddresses[postal] || `Singapore Postal District (${postal}), Singapore`;
+            baseAddrInput.value = found;
+            if (statusEl) statusEl.textContent = `✅ 주소 입력 완료 (${postal})`;
+            showToast('주소가 자동 설정되었습니다.', 'success');
+            updateSummaryPreview();
+        }
+
+        function formatDateWithDay(dateStr) {
+            if (!dateStr) return '';
+            if (dateStr.includes('(')) return dateStr;
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            if (isNaN(d.getTime())) return dateStr;
+            return `${dateStr} (${days[d.getDay()]})`;
+        }
+
+        function getDayOfWeekStr(dateStr) {
+            if (!dateStr) return '';
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const parts = dateStr.split(' ')[0].split('-');
+            if (parts.length !== 3) return '';
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            if (isNaN(d.getTime())) return '';
+            return `${days[d.getDay()]}요일`;
+        }
+
+        function handleDolTableChange() {
+            const dolVal = document.getElementById('dolTable').value;
+            const foldingWrapper = document.getElementById('wrapper-foldingScreen');
+            const foldingSelect = document.getElementById('foldingScreen');
+            const foldingNotice = document.getElementById('foldingScreenDisabledNotice');
+            
+            const bannerWrapper = document.getElementById('wrapper-banner');
+            const bannerSelect = document.getElementById('banner');
+            const bannerNotice = document.getElementById('bannerDisabledNotice');
+
+            if (dolVal === '베이식') {
+                foldingWrapper.classList.add('disabled-box');
+                foldingSelect.disabled = true;
+                foldingNotice.classList.remove('hidden');
+
+                bannerWrapper.classList.remove('disabled-box');
+                bannerSelect.disabled = false;
+                bannerNotice.classList.add('hidden');
+            } else {
+                foldingWrapper.classList.remove('disabled-box');
+                foldingSelect.disabled = false;
+                foldingNotice.classList.add('hidden');
+
+                bannerWrapper.classList.add('disabled-box');
+                bannerSelect.disabled = true;
+                bannerNotice.classList.remove('hidden');
+            }
+
+            document.getElementById('badge-dolTable').textContent = `SGD ${PRICING.dolTable[dolVal].toLocaleString()}`;
+            updateSummaryPreview();
+        }
+
+        function updateSummaryPreview() {
+            const dolVal = document.getElementById('dolTable').value;
+            const flowerVal = document.getElementById('flowers').value;
+            const riceVal = document.getElementById('riceCake').value;
+
+            let total = PRICING.dolTable[dolVal] || 0;
+            let items = [];
+
+            items.push(`돌상 [${dolVal}]: SGD ${PRICING.dolTable[dolVal].toLocaleString()}`);
+
+            const flowerCost = PRICING.flowers[flowerVal] || 0;
+            document.getElementById('badge-flowers').textContent = `+SGD ${flowerCost}`;
+            if (flowerCost > 0) {
+                total += flowerCost;
+                items.push(`꽃 구성 [생화]: +SGD ${flowerCost}`);
+            }
+
+            const riceCost = PRICING.riceCake[riceVal] || 0;
+            document.getElementById('badge-riceCake').textContent = `+SGD ${riceCost}`;
+            if (riceCost > 0) {
+                total += riceCost;
+                items.push(`떡 구성 [진짜떡]: +SGD ${riceCost}`);
+            }
+
+            if (appState.options.photo) { total += PRICING.photo; items.push(`스냅 사진 촬영: +SGD ${PRICING.photo}`); }
+            if (appState.options.video) { total += PRICING.video; items.push(`스냅 동영상 촬영: +SGD ${PRICING.video}`); }
+            if (appState.options.hanbokMom) { total += PRICING.hanbokMom; items.push(`엄마 한복 대여: +SGD ${PRICING.hanbokMom}`); }
+            if (appState.options.hanbokDad) { total += PRICING.hanbokDad; items.push(`아빠 한복 대여: +SGD ${PRICING.hanbokDad}`); }
+
+            document.getElementById('totalAmountDisplay').textContent = `SGD ${total.toLocaleString()}`;
+
+            const custName = document.getElementById('customerName').value.trim() || '고객';
+            const rawDateVal = document.getElementById('eventDate').value;
+            const dateValWithDay = formatDateWithDay(rawDateVal) || '날짜 미선택';
+            document.getElementById('summaryTitle').textContent = `${custName} 님 (${dateValWithDay}) 견적 내역`;
+
+            const dayLabelEl = document.getElementById('eventDateDayLabel');
+            if (dayLabelEl) dayLabelEl.textContent = rawDateVal ? `(${getDayOfWeekStr(rawDateVal)})` : '';
+
+            const container = document.getElementById('breakdownContainer');
+            container.innerHTML = items.map(it => `<p>• ${it}</p>`).join('');
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+
+            const rawEventDate = document.getElementById('eventDate').value;
+            const eventDate = formatDateWithDay(rawEventDate);
+            const eventTime = document.getElementById('eventTime').value;
+            const customerName = document.getElementById('customerName').value.trim();
+            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const babyName = document.getElementById('babyName').value.trim();
+            const babyGender = document.getElementById('babyGender').value.trim();
+            const baseAddress = document.getElementById('baseAddress').value.trim();
+            const detailAddress = document.getElementById('detailAddress').value.trim();
+            const postalCode = document.getElementById('postalCode').value.trim();
+            
+            const dolTable = document.getElementById('dolTable').value;
+            const foldingScreen = document.getElementById('foldingScreen').value;
+            const banner = document.getElementById('banner').value;
+            const flowers = document.getElementById('flowers').value;
+            const riceCake = document.getElementById('riceCake').value;
+            const specialNotes = document.getElementById('specialNotes').value.trim();
+
+            const totalDisplay = document.getElementById('totalAmountDisplay').textContent;
+
+            const newReservation = {
+                id: 'RES-' + Date.now().toString().slice(-6),
+                createdDate: document.getElementById('createdDateDisplay').value,
+                eventDate,
+                eventTime,
+                customerName,
+                phoneNumber,
+                babyName,
+                babyGender,
+                address: `${baseAddress} ${detailAddress}`.trim(),
+                postalCode,
+                dolTable,
+                foldingScreen: dolTable !== '베이식' ? foldingScreen : '해당없음',
+                banner: dolTable === '베이식' ? banner : '해당없음',
+                flowers,
+                riceCake,
+                options: { ...appState.options },
+                specialNotes,
+                totalPrice: totalDisplay,
+                status: '대기'
+            };
+
+            if (window.saveReservationToCloud) {
+                await window.saveReservationToCloud(newReservation);
+            }
+
+            openReservationDetailModal(newReservation, true);
+
+            // Reset form
+            document.getElementById('reservationForm').reset();
+            appState.options = { photo: false, video: false, hanbokMom: false, hanbokDad: false };
+            ['photo', 'video', 'hanbokMom', 'hanbokDad'].forEach(k => {
+                const card = document.getElementById(`card-${k}`);
+                const switchBg = document.getElementById(`switch-${k}`);
+                const circle = document.getElementById(`circle-${k}`);
+                if (card && switchBg && circle) {
+                    card.className = "cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-1.5 shadow-sm select-none";
+                    switchBg.className = "toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center";
+                    circle.className = "toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0";
+                }
+            });
+            handleDolTableChange();
+            showToast('🎉 예약 신청서가 실시간 접수되었습니다!', 'success');
+        }
+
+        /* ---------------------------------- */
+        /* ADMIN DASHBOARD RENDER & LOGIC     */
+        /* ---------------------------------- */
+        function renderAnalyticsAndList() {
+            const reservations = appState.reservations || [];
+            const yearFilter = document.getElementById('statYearSelect').value;
+            const monthFilter = document.getElementById('statMonthSelect').value;
+
+            let filtered = reservations.filter(r => {
+                if (!r.eventDate) return true;
+                const cleanDate = r.eventDate.split(' ')[0]; // "2026-10-24"
+                const parts = cleanDate.split('-');
+                if (parts.length < 2) return true;
+
+                const matchYear = (yearFilter === 'ALL') || (parts[0] === yearFilter);
+                const matchMonth = (monthFilter === 'ALL') || (parts[1] === monthFilter);
+                return matchYear && matchMonth;
+            });
+
+            let totalRevenue = 0;
+            let confirmedRevenue = 0;
+            let pendingRevenue = 0;
+            let totalCount = filtered.length;
+            let confirmedCount = 0;
+            let pendingCount = 0;
+            let cancelledCount = 0;
+
+            let dolTableCounts = { '베이식': 0, '프리미엄': 0, '프레스티지': 0 };
+            let flowerCounts = { '생화': 0, '조화': 0 };
+            let riceCounts = { '진짜떡': 0, '모조떡': 0 };
+            let photoCount = 0, videoCount = 0, momHanbokCount = 0, dadHanbokCount = 0;
+
+            filtered.forEach(r => {
+                const amount = parseInt(r.totalPrice ? r.totalPrice.replace(/[^0-9]/g, '') : 0) || 0;
+                totalRevenue += amount;
+
+                if (r.status === '확정') {
+                    confirmedRevenue += amount;
+                    confirmedCount++;
+                } else if (r.status === '대기') {
+                    pendingRevenue += amount;
+                    pendingCount++;
+                } else if (r.status === '취소') {
+                    cancelledCount++;
+                }
+
+                if (r.dolTable && dolTableCounts[r.dolTable] !== undefined) dolTableCounts[r.dolTable]++;
+                if (r.flowers && flowerCounts[r.flowers] !== undefined) flowerCounts[r.flowers]++;
+                if (r.riceCake && riceCounts[r.riceCake] !== undefined) riceCounts[r.riceCake]++;
+
+                if (r.options) {
+                    if (r.options.photo) photoCount++;
+                    if (r.options.video) videoCount++;
+                    if (r.options.hanbokMom) momHanbokCount++;
+                    if (r.options.hanbokDad) dadHanbokCount++;
+                }
+            });
+
+            document.getElementById('stat-total-revenue').textContent = `SGD ${totalRevenue.toLocaleString()}`;
+            document.getElementById('stat-confirmed-revenue').textContent = `SGD ${confirmedRevenue.toLocaleString()}`;
+            document.getElementById('stat-confirmed-count-sub').textContent = `${confirmedCount}건 확정 완료`;
+
+            document.getElementById('stat-pending-count').textContent = `${pendingCount}건`;
+            document.getElementById('stat-pending-revenue-sub').textContent = `예상 SGD ${pendingRevenue.toLocaleString()}`;
+
+            document.getElementById('stat-total-count').textContent = `${totalCount}건`;
+            document.getElementById('stat-cancelled-count-sub').textContent = `취소 ${cancelledCount}건 포함`;
+
+            renderBarChart('analytics-dolTable', [
+                { label: '베이식 (SGD 950)', count: dolTableCounts['베이식'], total: totalCount },
+                { label: '프리미엄 (SGD 1,250)', count: dolTableCounts['프리미엄'], total: totalCount },
+                { label: '프레스티지 (SGD 1,550)', count: dolTableCounts['프레스티지'], total: totalCount }
+            ]);
+
+            renderBarChart('analytics-addons', [
+                { label: '생화 옵션 (+SGD 600)', count: flowerCounts['생화'], total: totalCount },
+                { label: '조화 옵션 (기본)', count: flowerCounts['조화'], total: totalCount },
+                { label: '진짜떡 옵션 (+SGD 350)', count: riceCounts['진짜떡'], total: totalCount },
+                { label: '모조떡 옵션 (기본)', count: riceCounts['모조떡'], total: totalCount }
+            ]);
+
+            renderBarChart('analytics-services', [
+                { label: '사진 스냅 촬영 (+SGD 600)', count: photoCount, total: totalCount },
+                { label: '동영상 촬영 (+SGD 1,000)', count: videoCount, total: totalCount },
+                { label: '엄마 한복 대여 (+SGD 250)', count: momHanbokCount, total: totalCount },
+                { label: '아빠 한복 대여 (+SGD 200)', count: dadHanbokCount, total: totalCount }
+            ]);
+
+            renderReservationList(filtered);
+        }
+
+        function renderBarChart(containerId, items) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            container.innerHTML = items.map(item => {
+                const pct = item.total > 0 ? Math.round((item.count / item.total) * 100) : 0;
+                return `
+                    <div class="space-y-1">
+                        <div class="flex justify-between text-[11px] font-medium text-slate-700">
+                            <span>${item.label}</span>
+                            <span class="font-bold">${item.count}건 (${pct}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                            <div class="bg-coral-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderReservationList(listData) {
+            const listEl = document.getElementById('adminReservationList');
+            const search = document.getElementById('adminSearchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('adminStatusFilter').value;
+
+            listEl.innerHTML = '';
+
+            let finalFiltered = listData.filter(r => {
+                const matchSearch = (r.customerName && r.customerName.toLowerCase().includes(search)) ||
+                                    (r.babyName && r.babyName.toLowerCase().includes(search)) ||
+                                    (r.phoneNumber && r.phoneNumber.includes(search)) ||
+                                    (r.id && r.id.toLowerCase().includes(search));
+                const matchStatus = (statusFilter === 'ALL') || (r.status === statusFilter);
+                return matchSearch && matchStatus;
+            });
+
+            if (finalFiltered.length === 0) {
+                listEl.innerHTML = `
+                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500">
+                        <i data-lucide="inbox" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+                        <p class="text-xs font-medium">검색 조건에 일치하는 예약 신청서가 없습니다.</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
+            }
+
+            finalFiltered.forEach(r => {
+                const badgeColor = r.status === '대기' ? 'bg-amber-100 text-amber-800 border-amber-300' :
+                                   r.status === '확정' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
+                                   'bg-slate-100 text-slate-600 border-slate-300';
+
+                const item = document.createElement('div');
+                item.className = "bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5 hover:border-coral-300 transition-all";
+                item.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs font-bold font-mono text-coral-600">${r.id}</span>
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${badgeColor}">${r.status}</span>
+                        </div>
+                        <span class="text-xs font-bold text-slate-900 font-mono">${r.totalPrice}</span>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">행사 일시</span>
+                            <span class="font-bold text-slate-800">${r.eventDate} (${r.eventTime})</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">예약자 / 아기</span>
+                            <span class="font-bold text-slate-800">${r.customerName} (${r.babyName})</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">연락처</span>
+                            <span class="font-bold text-slate-800">${r.phoneNumber}</span>
+                        </div>
+                        <div>
+                            <span class="text-slate-400 block text-[10px]">돌상 / 꽃 / 떡</span>
+                            <span class="font-medium text-slate-700">${r.dolTable} / ${r.flowers} / ${r.riceCake}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-200">
+                        <div class="flex items-center space-x-1.5">
+                            <button type="button" onclick="updateStatus('${r.id}', '확정')" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition-all">
+                                예약 확정
+                            </button>
+                            <button type="button" onclick="updateStatus('${r.id}', '대기')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold transition-all">
+                                대기 전환
+                            </button>
+                            <button type="button" onclick="updateStatus('${r.id}', '취소')" class="px-2.5 py-1 bg-slate-400 hover:bg-slate-500 text-white rounded-lg text-[11px] font-bold transition-all">
+                                취소
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" onclick='openReservationDetailModalById("${r.id}")' class="px-3 py-1 bg-white hover:bg-coral-50 text-coral-800 border border-coral-200 rounded-lg text-[11px] font-bold transition-all flex items-center">
+                                <i data-lucide="file-text" class="w-3 h-3 mr-1"></i> 상세보기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                listEl.appendChild(item);
+            });
+
+            lucide.createIcons();
+        }
+
+        async function updateStatus(id, newStatus) {
+            if (window.updateReservationStatusInCloud) {
+                await window.updateReservationStatusInCloud(id, newStatus);
+            }
+            renderAnalyticsAndList();
+            showToast(`[${id}] 예약 상태가 '${newStatus}'(으)로 변경되었습니다.`, 'info');
+        }
+
+        function openReservationDetailModalById(id) {
+            const res = appState.reservations.find(r => r.id === id);
+            if (res) openReservationDetailModal(res, false);
+        }
+
+        function openReservationDetailModal(res, isNewSubmission = false) {
+            const content = document.getElementById('modalDetailContent');
+            
+            let optionsText = [];
+            if (res.options) {
+                if (res.options.photo) optionsText.push('스냅 사진 (+SGD 600)');
+                if (res.options.video) optionsText.push('스냅 동영상 (+SGD 1,000)');
+                if (res.options.hanbokMom) optionsText.push('엄마 한복 (+SGD 250)');
+                if (res.options.hanbokDad) optionsText.push('아빠 한복 (+SGD 200)');
+            }
+
+            content.innerHTML = `
+                <div class="space-y-4">
+                    ${isNewSubmission ? `
+                        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-center space-y-1">
+                            <i data-lucide="check-circle" class="w-8 h-8 text-emerald-500 mx-auto"></i>
+                            <h3 class="font-bold font-batang text-emerald-900 text-base">예약 신청서 제출 완료</h3>
+                            <p class="text-xs text-emerald-700">관리자 확인 후 24시간 이내 안내 연락을 드립니다.</p>
+                        </div>
+                    ` : ''}
+
+                    <div class="border-b border-coral-200 pb-3 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs font-mono text-coral-600 font-bold">${res.id}</span>
+                            <h3 class="text-base font-bold font-batang text-coral-900">${res.customerName} 님 예약 상세</h3>
+                        </div>
+                        <span class="px-2.5 py-0.5 text-xs font-bold rounded-full ${res.status === '확정' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${res.status}</span>
+                    </div>
+
+                    <div class="space-y-2 text-xs sm:text-sm">
+                        <div class="grid grid-cols-2 gap-2 bg-coral-50/50 p-3 rounded-xl border border-coral-100">
+                            <p><strong>신청일:</strong> ${res.createdDate}</p>
+                            <p><strong>행사 날짜:</strong> ${res.eventDate}</p>
+                            <p><strong>행사 시간:</strong> ${res.eventTime}</p>
+                            <p><strong>연락처:</strong> ${res.phoneNumber}</p>
+                            <p><strong>아기 이름/성별:</strong> ${res.babyName} (${res.babyGender})</p>
+                            <p class="col-span-2"><strong>행사 주소:</strong> ${res.address}</p>
+                        </div>
+
+                        <div class="space-y-1 bg-white p-3 rounded-xl border border-gray-200">
+                            <h4 class="font-bold text-coral-900 text-xs border-b pb-1 mb-1">선택 구성 상세</h4>
+                            <p>• 돌상 종류: ${res.dolTable}</p>
+                            <p>• 병풍 / 현수막: ${res.foldingScreen !== '해당없음' ? res.foldingScreen : res.banner}</p>
+                            <p>• 꽃 구성: ${res.flowers}</p>
+                            <p>• 떡 구성: ${res.riceCake}</p>
+                            <p>• 추가 옵션: ${optionsText.length > 0 ? optionsText.join(', ') : '없음'}</p>
+                            ${res.specialNotes ? `<p class="text-gray-500 pt-1 border-t mt-1">• 메모: ${res.specialNotes}</p>` : ''}
+                        </div>
+
+                        <div class="bg-coral-500 text-white p-3 rounded-xl flex items-center justify-between font-bold">
+                            <span>최종 예상 견적</span>
+                            <span class="text-lg font-mono">${res.totalPrice}</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-2 pt-2 no-print">
+                        <button type="button" onclick="window.print()" class="w-full py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-xl text-xs flex items-center justify-center">
+                            <i data-lucide="printer" class="w-3.5 h-3.5 mr-1"></i> 명세서 인쇄
+                        </button>
+                        <button type="button" onclick="closeModal('modalDetail')" class="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl text-xs">
+                            닫기
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('modalDetail').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+
+        function loadSampleData() {
+            appState.reservations = [
+                {
+                    id: 'RES-88201',
+                    createdDate: '2026-09-18 (금)',
+                    eventDate: '2026-10-10 (토)',
+                    eventTime: '12:00 PM',
+                    customerName: '김수현',
+                    phoneNumber: '+65 9123 4567',
+                    babyName: '김도윤',
+                    babyGender: '남아',
+                    address: '238881 Orchard Road, #10-12, Singapore',
+                    postalCode: '238881',
+                    dolTable: '프리미엄',
+                    foldingScreen: '병풍 2 (십장생도)',
+                    banner: '해당없음',
+                    flowers: '생화',
+                    riceCake: '진짜떡',
+                    options: { photo: true, video: false, hanbokMom: true, hanbokDad: true },
+                    specialNotes: '자연광 촬영 위주 부탁드립니다.',
+                    totalPrice: 'SGD 2,700',
+                    status: '대기'
+                },
+                {
+                    id: 'RES-88105',
+                    createdDate: '2026-09-15 (화)',
+                    eventDate: '2026-10-17 (토)',
+                    eventTime: '01:00 PM',
+                    customerName: '이지은',
+                    phoneNumber: '+65 8988 1234',
+                    babyName: '박서아',
+                    babyGender: '여아',
+                    address: '098185 Harbourfront Walk, Singapore',
+                    postalCode: '098185',
+                    dolTable: '베이식',
+                    foldingScreen: '해당없음',
+                    banner: '벚꽃',
+                    flowers: '조화',
+                    riceCake: '모조떡',
+                    options: { photo: true, video: false, hanbokMom: false, hanbokDad: false },
+                    specialNotes: '',
+                    totalPrice: 'SGD 1,550',
+                    status: '확정'
+                }
+            ];
+            localStorage.setItem('agijagi_reservations', JSON.stringify(appState.reservations));
+            renderCalendar();
+            renderAnalyticsAndList();
+            showToast('🔄 샘플 데이터가 복원되었습니다.', 'info');
+        }
+
+        function copyShareLink() {
+            const url = window.location.href;
+            if (navigator.clipboard) navigator.clipboard.writeText(url);
+            else {
+                const input = document.createElement('input');
+                input.value = url;
+                document.body.appendChild(input);
+                input.select();
+                document.execCommand('copy');
+                document.body.removeChild(input);
+            }
+            showToast('🔗 고객 전송용 신청서 링크가 복사되었습니다!', 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-gray-800';
+            toast.className = `${bgClass} text-white text-xs sm:text-sm font-medium px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        /* ---------------------------------- */
+        /* INITIALIZATION                     */
+        /* ---------------------------------- */
+        window.onload = function() {
+            const today = new Date();
+            const days = ['일', '월', '화', '수', '목', '금', '토'];
+            const yyyy = today.getFullYear();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const todayWithDay = `${yyyy}-${mm}-${dd} (${days[today.getDay()]})`;
+
+            document.getElementById('createdDateDisplay').value = todayWithDay;
+            document.getElementById('eventDate').min = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('eventDate').value = appState.selectedDate;
+
+            const stored = localStorage.getItem('agijagi_reservations');
+            if (stored) {
+                try { 
+                    appState.reservations = JSON.parse(stored); 
+                } catch(e){ 
+                    loadSampleData(); 
+                }
+            } else {
+                loadSampleData();
+            }
+
+            renderCalendar();
+            handleDolTableChange();
+            updateSummaryPreview();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
