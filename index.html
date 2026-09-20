@@ -541,7 +541,7 @@
 
                 <form onsubmit="verifyPassword(event)" class="space-y-3 pt-2">
                     <div>
-                        <input type="password" id="adminPasswordInput" placeholder="비밀번호 입력 (기본: 1234)" required autofocus class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-center font-mono text-base tracking-widest">
+                        <input type="password" id="adminPasswordInput" placeholder="비밀번호 입력 (기본: 1234)" required class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-coral-400 outline-none text-center font-mono text-base tracking-widest">
                         <p id="authErrorMsg" class="text-xs text-coral-600 font-bold mt-1.5 hidden">⚠️ 비밀번호가 일치하지 않습니다.</p>
                     </div>
                     <button type="submit" id="txt-btnAdminLogin" class="w-full py-2.5 bg-coral-500 hover:bg-coral-600 text-white font-bold text-sm rounded-xl shadow-md transition-all">
@@ -984,7 +984,7 @@
         const initDd = String(initialDate.getDate()).padStart(2, '0');
 
         window.appState = {
-            lang: 'ko', // DEFAULT IS KOREAN AS REQUESTED
+            lang: 'ko',
             calYear: initialDate.getFullYear(),
             calMonth: initialDate.getMonth(),
             selectedDate: `${initYyyy}-${initMm}-${initDd}`,
@@ -992,7 +992,10 @@
             reservations: []
         };
 
-
+        window.isAuthenticated = false;
+        
+        /* 10월 달력 "마감" 일자를 해제하여 예약이 가능하도록 빈 배열로 변경 */
+        const BOOKED_DATES = [];
 
         /* ---------------------------------- */
         /* LANGUAGE TOGGLE LOGIC              */
@@ -1009,7 +1012,6 @@
 
             document.documentElement.lang = lang;
 
-            // Map standard IDs to dict keys
             const mapKeys = [
                 'langToggleBtnText', 'headerTitle', 'headerSub', 'copyLink',
                 'bannerBadge', 'bannerTitle', 'bannerSub', 'sec1Title',
@@ -1040,7 +1042,6 @@
                 }
             });
 
-            // Update placeholders
             const phMap = {
                 'customerName': dict.phCustomerName,
                 'phoneNumber': dict.phPhoneNumber,
@@ -1059,10 +1060,7 @@
                 if (el && phMap[id]) el.placeholder = phMap[id];
             });
 
-            // Populate selects with localized option labels
             populateSelectOptions();
-
-            // Re-render UI components
             renderCalendar();
             handleDolTableChange();
             updateSummaryPreview();
@@ -1077,7 +1075,6 @@
         function populateSelectOptions() {
             const isEn = appState.lang === 'en';
 
-            // Dol Table Select
             const dolSelect = document.getElementById('dolTable');
             const dolCurrentVal = dolSelect.value || '프리미엄';
             dolSelect.innerHTML = isEn ? `
@@ -1091,7 +1088,6 @@
             `;
             dolSelect.value = dolCurrentVal;
 
-            // Folding Screen Select
             const foldingSelect = document.getElementById('foldingScreen');
             const foldingCurrentVal = foldingSelect.value || '병풍 2 (십장생도)';
             foldingSelect.innerHTML = isEn ? `
@@ -1103,7 +1099,6 @@
             `;
             foldingSelect.value = foldingCurrentVal;
 
-            // Banner Select
             const bannerSelect = document.getElementById('banner');
             const bannerCurrentVal = bannerSelect.value || '책가도';
             bannerSelect.innerHTML = isEn ? `
@@ -1115,7 +1110,6 @@
             `;
             bannerSelect.value = bannerCurrentVal;
 
-            // Flowers Select
             const flowersSelect = document.getElementById('flowers');
             const flowersCurrentVal = flowersSelect.value || '조화';
             flowersSelect.innerHTML = isEn ? `
@@ -1127,7 +1121,6 @@
             `;
             flowersSelect.value = flowersCurrentVal;
 
-            // Rice Cake Select
             const riceSelect = document.getElementById('riceCake');
             const riceCurrentVal = riceSelect.value || '모조떡';
             riceSelect.innerHTML = isEn ? `
@@ -1139,7 +1132,6 @@
             `;
             riceSelect.value = riceCurrentVal;
 
-            // Admin Filters
             const yearSel = document.getElementById('statYearSelect');
             if (yearSel) {
                 const curY = yearSel.value || '2026';
@@ -1210,6 +1202,14 @@
                 window.isAuthenticated = false;
                 document.getElementById('authGate').classList.remove('hidden');
                 document.getElementById('adminMainContent').classList.add('hidden');
+                
+                setTimeout(() => {
+                    const pwInput = document.getElementById('adminPasswordInput');
+                    if (pwInput) {
+                        pwInput.value = '';
+                        pwInput.focus();
+                    }
+                }, 50);
             }
             lucide.createIcons();
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1240,6 +1240,7 @@
                 showToast(appState.lang === 'en' ? '🔑 Logged in as Admin.' : '🔑 관리자로 로그인하였습니다.', 'success');
             } else {
                 errEl.classList.remove('hidden');
+                document.getElementById('adminPasswordInput').focus();
             }
         }
 
@@ -1492,6 +1493,23 @@
             updateSummaryPreview();
         }
 
+        function calculateTotal() {
+            const dolVal = document.getElementById('dolTable').value;
+            const flowerVal = document.getElementById('flowers').value;
+            const riceVal = document.getElementById('riceCake').value;
+
+            let total = PRICING.dolTable[dolVal] || 0;
+            total += PRICING.flowers[flowerVal] || 0;
+            total += PRICING.riceCake[riceVal] || 0;
+
+            if (appState.options.photo) total += PRICING.photo;
+            if (appState.options.video) total += PRICING.video;
+            if (appState.options.hanbokMom) total += PRICING.hanbokMom;
+            if (appState.options.hanbokDad) total += PRICING.hanbokDad;
+
+            return total;
+        }
+
         function updateSummaryPreview() {
             const isEn = appState.lang === 'en';
             const dolVal = document.getElementById('dolTable').value;
@@ -1526,449 +1544,410 @@
             }
             if (appState.options.video) {
                 total += PRICING.video;
-                items.push(isEn ? `Videography Snap: +SGD ${PRICING.video}` : `스냅 동영상 촬영: +SGD ${PRICING.video}`);
+                items.push(isEn ? `Video Recording: +SGD ${PRICING.video}` : `동영상 촬영: +SGD ${PRICING.video}`);
             }
             if (appState.options.hanbokMom) {
                 total += PRICING.hanbokMom;
-                items.push(isEn ? `Mom's Hanbok Rental: +SGD ${PRICING.hanbokMom}` : `엄마 한복 대여: +SGD ${PRICING.hanbokMom}`);
+                items.push(isEn ? `Mom's Hanbok: +SGD ${PRICING.hanbokMom}` : `엄마 한복 대여: +SGD ${PRICING.hanbokMom}`);
             }
             if (appState.options.hanbokDad) {
                 total += PRICING.hanbokDad;
-                items.push(isEn ? `Dad's Hanbok Rental: +SGD ${PRICING.hanbokDad}` : `아빠 한복 대여: +SGD ${PRICING.hanbokDad}`);
+                items.push(isEn ? `Dad's Hanbok: +SGD ${PRICING.hanbokDad}` : `아빠 한복 대여: +SGD ${PRICING.hanbokDad}`);
             }
 
             document.getElementById('totalAmountDisplay').textContent = `SGD ${total.toLocaleString()}`;
 
-            const custName = document.getElementById('customerName').value.trim() || (isEn ? 'Customer' : '고객');
-            const rawDateVal = document.getElementById('eventDate').value;
-            const dateValWithDay = formatDateWithDay(rawDateVal) || (isEn ? 'Date Not Selected' : '날짜 미선택');
-            
-            document.getElementById('summaryTitle').textContent = isEn 
-                ? `${custName}${I18N.en.summaryTitleSuffix} (${dateValWithDay})`
-                : `${custName} 님 (${dateValWithDay}) 견적 내역`;
-
-            const dayLabelEl = document.getElementById('eventDateDayLabel');
-            if (dayLabelEl) dayLabelEl.textContent = rawDateVal ? `(${getDayOfWeekStr(rawDateVal)})` : '';
-
             const container = document.getElementById('breakdownContainer');
-            container.innerHTML = items.map(it => `<p>• ${it}</p>`).join('');
+            if (container) {
+                container.innerHTML = items.map(item => `<div>• ${item}</div>`).join('');
+            }
+
+            const custName = document.getElementById('customerName').value.trim();
+            const summaryTitle = document.getElementById('summaryTitle');
+            const dict = I18N[appState.lang];
+            if (summaryTitle) {
+                if (custName) {
+                    summaryTitle.textContent = `${custName}${dict.summaryTitleSuffix}`;
+                } else {
+                    summaryTitle.textContent = dict.defaultSummaryTitle;
+                }
+            }
+
+            const evtDateInput = document.getElementById('eventDate').value;
+            const dayLabel = document.getElementById('eventDateDayLabel');
+            if (evtDateInput && dayLabel) {
+                dayLabel.textContent = getDayOfWeekStr(evtDateInput);
+            }
         }
 
-        async function handleFormSubmit(event) {
-            event.preventDefault();
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const isEn = appState.lang === 'en';
 
-            const rawEventDate = document.getElementById('eventDate').value;
-            const eventDate = formatDateWithDay(rawEventDate);
-            const eventTime = document.getElementById('eventTime').value;
-            const customerName = document.getElementById('customerName').value.trim();
-            const phoneNumber = document.getElementById('phoneNumber').value.trim();
+            const evtDate = document.getElementById('eventDate').value;
+            const evtTime = document.getElementById('eventTime').value;
+            const name = document.getElementById('customerName').value.trim();
+            const phone = document.getElementById('phoneNumber').value.trim();
             const babyName = document.getElementById('babyName').value.trim();
             const babyGender = document.getElementById('babyGender').value.trim();
-            const baseAddress = document.getElementById('baseAddress').value.trim();
-            const detailAddress = document.getElementById('detailAddress').value.trim();
+            const baseAddr = document.getElementById('baseAddress').value.trim();
+            const detailAddr = document.getElementById('detailAddress').value.trim();
             const postalCode = document.getElementById('postalCode').value.trim();
-            
-            const dolTable = document.getElementById('dolTable').value;
-            const foldingScreen = document.getElementById('foldingScreen').value;
-            const banner = document.getElementById('banner').value;
-            const flowers = document.getElementById('flowers').value;
-            const riceCake = document.getElementById('riceCake').value;
-            const specialNotes = document.getElementById('specialNotes').value.trim();
+            const dolVal = document.getElementById('dolTable').value;
 
-            const totalDisplay = document.getElementById('totalAmountDisplay').textContent;
+            if (!evtDate) {
+                showToast(isEn ? 'Please select an event date.' : '행사 날짜를 선택해주세요.', 'error');
+                return;
+            }
+
+            const fullAddr = `${baseAddr} ${detailAddr} (Postal ${postalCode})`.trim();
+            const total = calculateTotal();
 
             const newReservation = {
-                id: 'RES-' + Date.now().toString().slice(-6),
+                id: 'RES-' + Date.now(),
                 createdDate: document.getElementById('createdDateDisplay').value,
-                eventDate,
-                eventTime,
-                customerName,
-                phoneNumber,
-                babyName,
-                babyGender,
-                address: `${baseAddress} ${detailAddress}`.trim(),
-                postalCode,
-                dolTable,
-                foldingScreen: dolTable !== '베이식' ? foldingScreen : '해당없음',
-                banner: dolTable === '베이식' ? banner : '해당없음',
-                flowers,
-                riceCake,
+                eventDate: `${evtDate} ${evtTime}`,
+                customerName: name,
+                phoneNumber: phone,
+                babyName: babyName,
+                babyGender: babyGender,
+                address: fullAddr,
+                dolTable: dolVal,
+                foldingScreen: dolVal !== '베이식' ? document.getElementById('foldingScreen').value : '없음 (베이식)',
+                banner: dolVal === '베이식' ? document.getElementById('banner').value : '없음 (병풍중심)',
+                flowers: document.getElementById('flowers').value,
+                riceCake: document.getElementById('riceCake').value,
                 options: { ...appState.options },
-                specialNotes,
-                totalPrice: totalDisplay,
+                specialNotes: document.getElementById('specialNotes').value.trim(),
+                totalAmount: total,
                 status: '대기'
             };
 
-            if (window.saveReservationToCloud) {
-                await window.saveReservationToCloud(newReservation);
-            }
+            await window.saveReservationToCloud(newReservation);
+            showReceiptModal(newReservation);
+            showToast(isEn ? 'Booking application submitted successfully!' : '예약 신청서가 성공적으로 제출되었습니다!', 'success');
+            
+            renderCalendar();
+        }
 
-            openReservationDetailModal(newReservation, true);
+        function showReceiptModal(res) {
+            const content = document.getElementById('modalDetailContent');
+            const isEn = appState.lang === 'en';
 
-            // Reset form
-            document.getElementById('reservationForm').reset();
-            appState.options = { photo: false, video: false, hanbokMom: false, hanbokDad: false };
-            ['photo', 'video', 'hanbokMom', 'hanbokDad'].forEach(k => {
-                const card = document.getElementById(`card-${k}`);
-                const switchBg = document.getElementById(`switch-${k}`);
-                const circle = document.getElementById(`circle-${k}`);
-                if (card && switchBg && circle) {
-                    card.className = "cursor-pointer p-3.5 rounded-xl border-2 border-gray-200 bg-white hover:border-coral-300 transition-all space-y-1.5 shadow-sm select-none";
-                    switchBg.className = "toggle-switch-bg w-9 h-5 bg-gray-300 rounded-full p-0.5 flex items-center";
-                    circle.className = "toggle-switch-circle w-4 h-4 bg-white rounded-full shadow transform translate-x-0";
-                }
-            });
-            handleDolTableChange();
-            showToast(appState.lang === 'en' ? '🎉 Booking application submitted successfully!' : '🎉 예약 신청서가 실시간 접수되었습니다!', 'success');
+            content.innerHTML = `
+                <div class="text-center space-y-2 border-b border-gray-200 pb-4">
+                    <div class="w-12 h-12 bg-coral-100 text-coral-600 rounded-full flex items-center justify-center mx-auto text-xl font-bold font-batang">
+                        돌
+                    </div>
+                    <h3 class="text-lg sm:text-xl font-bold font-batang text-coral-950">${isEn ? 'Booking Request Complete' : '예약 신청이 접수되었습니다!'}</h3>
+                    <p class="text-xs text-gray-500">${isEn ? 'Application ID' : '신청번호'}: <span class="font-mono font-bold text-coral-800">${res.id}</span></p>
+                </div>
+
+                <div class="space-y-3 text-xs sm:text-sm py-2">
+                    <div class="bg-coral-50 p-3 rounded-xl space-y-1 font-semibold text-coral-900 border border-coral-200">
+                        <p class="flex justify-between"><span>${isEn ? 'Customer' : '예약자'}:</span> <span>${res.customerName}</span></p>
+                        <p class="flex justify-between"><span>${isEn ? 'Baby' : '아기'}:</span> <span>${res.babyName} (${res.babyGender})</span></p>
+                        <p class="flex justify-between"><span>${isEn ? 'Event Date' : '행사 일시'}:</span> <span class="text-coral-600 font-bold">${res.eventDate}</span></p>
+                    </div>
+
+                    <div class="space-y-1.5 border border-gray-200 p-3 rounded-xl">
+                        <p class="font-bold text-gray-800 border-b pb-1">${isEn ? 'Selected Items' : '선택 내역 명세'}</p>
+                        <p class="flex justify-between text-gray-600"><span>• ${isEn ? 'Package' : '돌상'}:</span> <span>${res.dolTable}</span></p>
+                        <p class="flex justify-between text-gray-600"><span>• ${isEn ? 'Screen/Banner' : '병풍/현수막'}:</span> <span>${res.dolTable !== '베이식' ? res.foldingScreen : res.banner}</span></p>
+                        <p class="flex justify-between text-gray-600"><span>• ${isEn ? 'Flowers' : '꽃 구성'}:</span> <span>${res.flowers}</span></p>
+                        <p class="flex justify-between text-gray-600"><span>• ${isEn ? 'Rice Cake' : '떡 구성'}:</span> <span>${res.riceCake}</span></p>
+                        ${res.options.photo ? `<p class="flex justify-between text-coral-600 font-semibold"><span>• ${isEn ? 'Photography' : '스냅 사진'}:</span> <span>+SGD ${PRICING.photo}</span></p>` : ''}
+                        ${res.options.video ? `<p class="flex justify-between text-coral-600 font-semibold"><span>• ${isEn ? 'Videography' : '동영상 촬영'}:</span> <span>+SGD ${PRICING.video}</span></p>` : ''}
+                        ${res.options.hanbokMom ? `<p class="flex justify-between text-coral-600 font-semibold"><span>• ${isEn ? "Mom's Hanbok" : '엄마 한복'}:</span> <span>+SGD ${PRICING.hanbokMom}</span></p>` : ''}
+                        ${res.options.hanbokDad ? `<p class="flex justify-between text-coral-600 font-semibold"><span>• ${isEn ? "Dad's Hanbok" : '아빠 한복'}:</span> <span>+SGD ${PRICING.hanbokDad}</span></p>` : ''}
+                    </div>
+
+                    <div class="bg-gray-900 text-white p-3 rounded-xl flex items-center justify-between font-bold">
+                        <span>${isEn ? 'Total Estimate' : '총 예상 금액'}</span>
+                        <span class="text-lg font-mono text-amber-400">SGD ${res.totalAmount.toLocaleString()}</span>
+                    </div>
+
+                    <div class="bg-amber-50 border border-amber-200 text-amber-900 p-3 rounded-xl text-[11px] leading-relaxed">
+                        <p class="font-bold mb-1">📢 ${isEn ? 'Next Steps' : '다음 진행 안내'}</p>
+                        <p>1. ${isEn ? 'Our team will verify the date availability and send deposit details (SGD 200 via PayNow/Bank Transfer).' : '신청서 확인 후 예약금(SGD 200) 입금 계좌/PayNow 정보를 안내해 드립니다.'}</p>
+                        <p>2. ${isEn ? 'Your reservation will be confirmed immediately upon deposit.' : '예약금 입금 확인 완료 시 정식 예약으로 확정됩니다.'}</p>
+                    </div>
+                </div>
+
+                <div class="pt-2 flex space-x-2">
+                    <button type="button" onclick="closeModal('modalDetail')" class="w-full py-2.5 bg-coral-500 hover:bg-coral-600 text-white font-bold text-xs sm:text-sm rounded-xl transition-all shadow-md">
+                        ${isEn ? 'Close Window' : '확인 완료 및 닫기'}
+                    </button>
+                </div>
+            `;
+
+            document.getElementById('modalDetail').classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
         }
 
         /* ---------------------------------- */
-        /* ADMIN DASHBOARD RENDER & LOGIC     */
+        /* ADMIN DASHBOARD RENDERING          */
         /* ---------------------------------- */
         function renderAnalyticsAndList() {
-            const reservations = appState.reservations || [];
+            if (!window.isAuthenticated) return;
+
+            const isEn = appState.lang === 'en';
             const yearFilter = document.getElementById('statYearSelect').value;
             const monthFilter = document.getElementById('statMonthSelect').value;
+            const statusFilter = document.getElementById('adminStatusFilter').value;
+            const searchVal = document.getElementById('adminSearchInput').value.toLowerCase().trim();
 
-            let filtered = reservations.filter(r => {
+            let list = window.appState.reservations || [];
+
+            // Year & Month Filter
+            let filteredStatsList = list.filter(r => {
                 if (!r.eventDate) return true;
-                const cleanDate = r.eventDate.split(' ')[0]; // "2026-10-24"
-                const parts = cleanDate.split('-');
+                const datePart = r.eventDate.split(' ')[0];
+                const parts = datePart.split('-');
                 if (parts.length < 2) return true;
+                const rYear = parts[0];
+                const rMonth = parts[1];
 
-                const matchYear = (yearFilter === 'ALL') || (parts[0] === yearFilter);
-                const matchMonth = (monthFilter === 'ALL') || (parts[1] === monthFilter);
-                return matchYear && matchMonth;
+                if (yearFilter !== 'ALL' && rYear !== yearFilter) return false;
+                if (monthFilter !== 'ALL' && rMonth !== monthFilter) return false;
+                return true;
             });
 
+            // Calculate Metrics
             let totalRevenue = 0;
             let confirmedRevenue = 0;
-            let pendingRevenue = 0;
-            let totalCount = filtered.length;
             let confirmedCount = 0;
             let pendingCount = 0;
+            let pendingRevenue = 0;
             let cancelledCount = 0;
 
-            let dolTableCounts = { '베이식': 0, '프리미엄': 0, '프레스티지': 0 };
-            let flowerCounts = { '생화': 0, '조화': 0 };
-            let riceCounts = { '진짜떡': 0, '모조떡': 0 };
-            let photoCount = 0, videoCount = 0, momHanbokCount = 0, dadHanbokCount = 0;
+            let dolCounts = { '베이식': 0, '프리미엄': 0, '프레스티지': 0 };
+            let flowerCounts = { '조화': 0, '생화': 0 };
+            let riceCounts = { '모조떡': 0, '진짜떡': 0 };
+            let photoCount = 0, videoCount = 0, hanbokMomCount = 0, hanbokDadCount = 0;
 
-            filtered.forEach(r => {
-                const amount = parseInt(r.totalPrice ? r.totalPrice.replace(/[^0-9]/g, '') : 0) || 0;
-                totalRevenue += amount;
+            filteredStatsList.forEach(r => {
+                const amt = r.totalAmount || 0;
+                totalRevenue += amt;
 
                 if (r.status === '확정') {
-                    confirmedRevenue += amount;
+                    confirmedRevenue += amt;
                     confirmedCount++;
                 } else if (r.status === '대기') {
-                    pendingRevenue += amount;
                     pendingCount++;
+                    pendingRevenue += amt;
                 } else if (r.status === '취소') {
                     cancelledCount++;
                 }
 
-                if (r.dolTable && dolTableCounts[r.dolTable] !== undefined) dolTableCounts[r.dolTable]++;
+                if (r.dolTable && dolCounts[r.dolTable] !== undefined) dolCounts[r.dolTable]++;
                 if (r.flowers && flowerCounts[r.flowers] !== undefined) flowerCounts[r.flowers]++;
                 if (r.riceCake && riceCounts[r.riceCake] !== undefined) riceCounts[r.riceCake]++;
 
                 if (r.options) {
                     if (r.options.photo) photoCount++;
                     if (r.options.video) videoCount++;
-                    if (r.options.hanbokMom) momHanbokCount++;
-                    if (r.options.hanbokDad) dadHanbokCount++;
+                    if (r.options.hanbokMom) hanbokMomCount++;
+                    if (r.options.hanbokDad) hanbokDadCount++;
                 }
             });
-
-            const isEn = appState.lang === 'en';
 
             document.getElementById('stat-total-revenue').textContent = `SGD ${totalRevenue.toLocaleString()}`;
             document.getElementById('stat-confirmed-revenue').textContent = `SGD ${confirmedRevenue.toLocaleString()}`;
             document.getElementById('stat-confirmed-count-sub').textContent = isEn ? `${confirmedCount} confirmed` : `${confirmedCount}건 확정 완료`;
-
-            document.getElementById('stat-pending-count').textContent = isEn ? `${pendingCount}` : `${pendingCount}건`;
-            document.getElementById('stat-pending-revenue-sub').textContent = isEn ? `Est. SGD ${pendingRevenue.toLocaleString()}` : `예상 SGD ${pendingRevenue.toLocaleString()}`;
-
-            document.getElementById('stat-total-count').textContent = isEn ? `${totalCount}` : `${totalCount}건`;
+            document.getElementById('stat-pending-count').textContent = `${pendingCount}${isEn ? '' : '건'}`;
+            document.getElementById('stat-pending-revenue-sub').textContent = `${isEn ? 'Est.' : '예상'} SGD ${pendingRevenue.toLocaleString()}`;
+            document.getElementById('stat-total-count').textContent = `${filteredStatsList.length}${isEn ? '' : '건'}`;
             document.getElementById('stat-cancelled-count-sub').textContent = isEn ? `Incl. ${cancelledCount} cancelled` : `취소 ${cancelledCount}건 포함`;
 
-            renderBarChart('analytics-dolTable', [
-                { label: isEn ? 'Basic (SGD 950)' : '베이식 (SGD 950)', count: dolTableCounts['베이식'], total: totalCount },
-                { label: isEn ? 'Premium (SGD 1,250)' : '프리미엄 (SGD 1,250)', count: dolTableCounts['프리미엄'], total: totalCount },
-                { label: isEn ? 'Prestige (SGD 1,550)' : '프레스티지 (SGD 1,550)', count: dolTableCounts['프레스티지'], total: totalCount }
-            ]);
-
-            renderBarChart('analytics-addons', [
-                { label: isEn ? 'Fresh Flowers (+SGD 600)' : '생화 옵션 (+SGD 600)', count: flowerCounts['생화'], total: totalCount },
-                { label: isEn ? 'Silk Flowers (Standard)' : '조화 옵션 (기본)', count: flowerCounts['조화'], total: totalCount },
-                { label: isEn ? 'Fresh Rice Cake (+SGD 350)' : '진짜떡 옵션 (+SGD 350)', count: riceCounts['진짜떡'], total: totalCount },
-                { label: isEn ? 'Mock Rice Cake (Standard)' : '모조떡 옵션 (기본)', count: riceCounts['모조떡'], total: totalCount }
-            ]);
-
-            renderBarChart('analytics-services', [
-                { label: isEn ? 'Photography (+SGD 600)' : '사진 스냅 촬영 (+SGD 600)', count: photoCount, total: totalCount },
-                { label: isEn ? 'Videography (+SGD 1,000)' : '동영상 촬영 (+SGD 1,000)', count: videoCount, total: totalCount },
-                { label: isEn ? "Mom's Hanbok (+SGD 250)" : '엄마 한복 대여 (+SGD 250)', count: momHanbokCount, total: totalCount },
-                { label: isEn ? "Dad's Hanbok (+SGD 200)" : '아빠 한복 대여 (+SGD 200)', count: dadHanbokCount, total: totalCount }
-            ]);
-
-            renderReservationList(filtered);
-        }
-
-        function renderBarChart(containerId, items) {
-            const container = document.getElementById(containerId);
-            if (!container) return;
-
-            const isEn = appState.lang === 'en';
-
-            container.innerHTML = items.map(item => {
-                const pct = item.total > 0 ? Math.round((item.count / item.total) * 100) : 0;
+            // Render Charts
+            const renderBar = (label, count, total) => {
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0;
                 return `
                     <div class="space-y-1">
-                        <div class="flex justify-between text-[11px] font-medium text-slate-700">
-                            <span>${item.label}</span>
-                            <span class="font-bold">${item.count}${isEn ? '' : '건'} (${pct}%)</span>
+                        <div class="flex justify-between text-[11px] font-semibold text-slate-700">
+                            <span>${label}</span>
+                            <span>${count}${isEn ? '' : '건'} (${pct}%)</span>
                         </div>
-                        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-                            <div class="bg-coral-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full bg-coral-500 rounded-full transition-all duration-500" style="width: ${pct}%"></div>
                         </div>
                     </div>
                 `;
-            }).join('');
-        }
+            };
 
-        function renderReservationList(listData) {
-            const listEl = document.getElementById('adminReservationList');
-            const search = document.getElementById('adminSearchInput').value.toLowerCase();
-            const statusFilter = document.getElementById('adminStatusFilter').value;
-            const isEn = appState.lang === 'en';
+            const tot = filteredStatsList.length;
+            document.getElementById('analytics-dolTable').innerHTML = 
+                renderBar(isEn ? 'Basic' : '베이식', dolCounts['베이식'], tot) +
+                renderBar(isEn ? 'Premium' : '프리미엄', dolCounts['프리미엄'], tot) +
+                renderBar(isEn ? 'Prestige' : '프레스티지', dolCounts['프레스티지'], tot);
 
-            listEl.innerHTML = '';
+            document.getElementById('analytics-addons').innerHTML = 
+                renderBar(isEn ? 'Fresh Flowers' : '생화 구성', flowerCounts['생화'], tot) +
+                renderBar(isEn ? 'Artificial Flowers' : '조화 구성', flowerCounts['조화'], tot) +
+                renderBar(isEn ? 'Real Rice Cake' : '진짜떡 구성', riceCounts['진짜떡'], tot);
 
-            let finalFiltered = listData.filter(r => {
-                const matchSearch = (r.customerName && r.customerName.toLowerCase().includes(search)) ||
-                                    (r.babyName && r.babyName.toLowerCase().includes(search)) ||
-                                    (r.phoneNumber && r.phoneNumber.includes(search)) ||
-                                    (r.id && r.id.toLowerCase().includes(search));
-                const matchStatus = (statusFilter === 'ALL') || (r.status === statusFilter);
-                return matchSearch && matchStatus;
+            document.getElementById('analytics-services').innerHTML = 
+                renderBar(isEn ? 'Photography Snap' : '스냅 사진 촬영', photoCount, tot) +
+                renderBar(isEn ? 'Videography' : '동영상 촬영', videoCount, tot) +
+                renderBar(isEn ? "Mom's Hanbok" : '엄마 한복', hanbokMomCount, tot) +
+                renderBar(isEn ? "Dad's Hanbok" : '아빠 한복', hanbokDadCount, tot);
+
+            // Filter List by Status & Search
+            let displayList = filteredStatsList.filter(r => {
+                if (statusFilter !== 'ALL' && r.status !== statusFilter) return false;
+                if (searchVal) {
+                    const matchName = (r.customerName || '').toLowerCase().includes(searchVal);
+                    const matchBaby = (r.babyName || '').toLowerCase().includes(searchVal);
+                    const matchPhone = (r.phoneNumber || '').toLowerCase().includes(searchVal);
+                    return matchName || matchBaby || matchPhone;
+                }
+                return true;
             });
 
-            if (finalFiltered.length === 0) {
-                listEl.innerHTML = `
-                    <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 text-center text-slate-500">
-                        <i data-lucide="inbox" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
-                        <p class="text-xs font-medium">${isEn ? 'No booking records match your filter criteria.' : '검색 조건에 일치하는 예약 신청서가 없습니다.'}</p>
+            // Render List Items
+            const listContainer = document.getElementById('adminReservationList');
+            if (displayList.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-8 text-slate-400 text-xs">
+                        <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-1 opacity-50"></i>
+                        ${isEn ? 'No reservation records found.' : '조회된 예약 내역이 없습니다.'}
                     </div>
                 `;
                 lucide.createIcons();
                 return;
             }
 
-            finalFiltered.forEach(r => {
-                const badgeColor = r.status === '대기' ? 'bg-amber-100 text-amber-800 border-amber-300' :
-                                   r.status === '확정' ? 'bg-emerald-100 text-emerald-800 border-emerald-300' :
-                                   'bg-slate-100 text-slate-600 border-slate-300';
+            listContainer.innerHTML = displayList.map(r => {
+                let badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+                if (r.status === '확정') badgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+                if (r.status === '취소') badgeClass = 'bg-slate-100 text-slate-500 border-slate-300';
 
-                const statusLabel = isEn ? (r.status === '대기' ? 'Pending' : r.status === '확정' ? 'Confirmed' : 'Cancelled') : r.status;
+                return `
+                    <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 sm:p-4 space-y-2 hover:border-coral-300 transition-all shadow-sm">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                            <div class="flex items-center space-x-2">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${badgeClass}">${r.status || '대기'}</span>
+                                <span class="text-xs font-bold text-slate-900">${r.customerName} ${isEn ? 'Customer' : '고객님'}</span>
+                                <span class="text-[11px] text-slate-500 font-mono">(${r.phoneNumber})</span>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-xs font-extrabold font-mono text-coral-600">SGD ${(r.totalAmount || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
 
-                const item = document.createElement('div');
-                item.className = "bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-sm space-y-2.5 hover:border-coral-300 transition-all";
-                item.innerHTML = `
-                    <div class="flex items-center justify-between border-b border-slate-200 pb-2">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-bold font-mono text-coral-600">${r.id}</span>
-                            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full border ${badgeColor}">${statusLabel}</span>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600">
+                            <div>• <span class="font-semibold text-slate-800">${isEn ? 'Event Date' : '행사 일시'}:</span> ${r.eventDate}</div>
+                            <div>• <span class="font-semibold text-slate-800">${isEn ? 'Baby Name' : '아기 이름'}:</span> ${r.babyName} (${r.babyGender})</div>
+                            <div>• <span class="font-semibold text-slate-800">${isEn ? 'Package' : '돌상 스타일'}:</span> ${r.dolTable} / ${r.flowers} / ${r.riceCake}</div>
+                            <div>• <span class="font-semibold text-slate-800">${isEn ? 'Address' : '행사 주소'}:</span> ${r.address}</div>
                         </div>
-                        <span class="text-xs font-bold text-slate-900 font-mono">${r.totalPrice}</span>
-                    </div>
 
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                        <div>
-                            <span class="text-slate-400 block text-[10px]">${isEn ? 'Event Date & Time' : '행사 일시'}</span>
-                            <span class="font-bold text-slate-800">${r.eventDate} (${r.eventTime})</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block text-[10px]">${isEn ? 'Customer / Baby' : '예약자 / 아기'}</span>
-                            <span class="font-bold text-slate-800">${r.customerName} (${r.babyName})</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block text-[10px]">${isEn ? 'Contact' : '연락처'}</span>
-                            <span class="font-bold text-slate-800">${r.phoneNumber}</span>
-                        </div>
-                        <div>
-                            <span class="text-slate-400 block text-[10px]">${isEn ? 'Package / Flowers / Rice' : '돌상 / 꽃 / 떡'}</span>
-                            <span class="font-medium text-slate-700">${r.dolTable} / ${r.flowers} / ${r.riceCake}</span>
-                        </div>
-                    </div>
+                        ${r.specialNotes ? `<div class="bg-white p-2 rounded-lg border border-slate-200 text-[11px] text-slate-600"><strong>${isEn ? 'Notes' : '요청사항'}:</strong> ${r.specialNotes}</div>` : ''}
 
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-200">
-                        <div class="flex items-center space-x-1.5">
-                            <button type="button" onclick="updateStatus('${r.id}', '확정')" class="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-[11px] font-bold transition-all">
-                                ${isEn ? 'Confirm' : '예약 확정'}
-                            </button>
-                            <button type="button" onclick="updateStatus('${r.id}', '대기')" class="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[11px] font-bold transition-all">
-                                ${isEn ? 'Set Pending' : '대기 전환'}
-                            </button>
-                            <button type="button" onclick="updateStatus('${r.id}', '취소')" class="px-2.5 py-1 bg-slate-400 hover:bg-slate-500 text-white rounded-lg text-[11px] font-bold transition-all">
-                                ${isEn ? 'Cancel' : '취소'}
-                            </button>
-                        </div>
-                        <div>
-                            <button type="button" onclick='openReservationDetailModalById("${r.id}")' class="px-3 py-1 bg-white hover:bg-coral-50 text-coral-800 border border-coral-200 rounded-lg text-[11px] font-bold transition-all flex items-center">
-                                <i data-lucide="file-text" class="w-3 h-3 mr-1"></i> ${isEn ? 'Details' : '상세보기'}
-                            </button>
+                        <div class="flex items-center justify-end space-x-2 pt-1 border-t border-slate-200/60">
+                            <span class="text-[10px] text-slate-400 mr-auto">${isEn ? 'Submitted' : '접수일'}: ${r.createdDate}</span>
+                            <button type="button" onclick="updateStatus('${r.id}', '대기')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-all">${isEn ? 'Pending' : '대기'}</button>
+                            <button type="button" onclick="updateStatus('${r.id}', '확정')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all">${isEn ? 'Confirm' : '예약확정'}</button>
+                            <button type="button" onclick="updateStatus('${r.id}', '취소')" class="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-slate-200 text-slate-700 hover:bg-slate-300 border border-slate-300 transition-all">${isEn ? 'Cancel' : '취소'}</button>
                         </div>
                     </div>
                 `;
-                listEl.appendChild(item);
-            });
+            }).join('');
 
             lucide.createIcons();
         }
 
         async function updateStatus(id, newStatus) {
-            if (window.updateReservationStatusInCloud) {
-                await window.updateReservationStatusInCloud(id, newStatus);
-            }
+            await window.updateReservationStatusInCloud(id, newStatus);
             renderAnalyticsAndList();
-            const msg = appState.lang === 'en' ? `[${id}] Status changed to '${newStatus}'.` : `[${id}] 예약 상태가 '${newStatus}'(으)로 변경되었습니다.`;
-            showToast(msg, 'info');
+            renderCalendar();
+            showToast(appState.lang === 'en' ? `Reservation status updated to [${newStatus}].` : `예약 상태가 [${newStatus}](으)로 변경되었습니다.`, 'success');
         }
-
-        function openReservationDetailModalById(id) {
-            const res = appState.reservations.find(r => r.id === id);
-            if (res) openReservationDetailModal(res, false);
-        }
-
-        function openReservationDetailModal(res, isNewSubmission = false) {
-            const content = document.getElementById('modalDetailContent');
-            const isEn = appState.lang === 'en';
-            
-            let optionsText = [];
-            if (res.options) {
-                if (res.options.photo) optionsText.push(isEn ? 'Photo (+SGD 600)' : '스냅 사진 (+SGD 600)');
-                if (res.options.video) optionsText.push(isEn ? 'Video (+SGD 1,000)' : '스냅 동영상 (+SGD 1,000)');
-                if (res.options.hanbokMom) optionsText.push(isEn ? "Mom's Hanbok (+SGD 250)" : '엄마 한복 (+SGD 250)');
-                if (res.options.hanbokDad) optionsText.push(isEn ? "Dad's Hanbok (+SGD 200)" : '아빠 한복 (+SGD 200)');
-            }
-
-            content.innerHTML = `
-                <div class="space-y-4">
-                    ${isNewSubmission ? `
-                        <div class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-center space-y-1">
-                            <i data-lucide="check-circle" class="w-8 h-8 text-emerald-500 mx-auto"></i>
-                            <h3 class="font-bold font-batang text-emerald-900 text-base">${isEn ? 'Booking Submitted Successfully' : '예약 신청서 제출 완료'}</h3>
-                            <p class="text-xs text-emerald-700">${isEn ? 'Our team will review and contact you within 24 hours.' : '관리자 확인 후 24시간 이내 안내 연락을 드립니다.'}</p>
-                        </div>
-                    ` : ''}
-
-                    <div class="border-b border-coral-200 pb-3 flex items-center justify-between">
-                        <div>
-                            <span class="text-xs font-mono text-coral-600 font-bold">${res.id}</span>
-                            <h3 class="text-base font-bold font-batang text-coral-900">${res.customerName} ${isEn ? 'Booking Receipt' : '님 예약 상세'}</h3>
-                        </div>
-                        <span class="px-2.5 py-0.5 text-xs font-bold rounded-full ${res.status === '확정' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">${res.status}</span>
-                    </div>
-
-                    <div class="space-y-2 text-xs sm:text-sm">
-                        <div class="grid grid-cols-2 gap-2 bg-coral-50/50 p-3 rounded-xl border border-coral-100">
-                            <p><strong>${isEn ? 'Date Created:' : '신청일:'}</strong> ${res.createdDate}</p>
-                            <p><strong>${isEn ? 'Event Date:' : '행사 날짜:'}</strong> ${res.eventDate}</p>
-                            <p><strong>${isEn ? 'Event Time:' : '행사 시간:'}</strong> ${res.eventTime}</p>
-                            <p><strong>${isEn ? 'Contact:' : '연락처:'}</strong> ${res.phoneNumber}</p>
-                            <p><strong>${isEn ? 'Baby/Gender:' : '아기 이름/성별:'}</strong> ${res.babyName} (${res.babyGender})</p>
-                            <p class="col-span-2"><strong>${isEn ? 'Address:' : '행사 주소:'}</strong> ${res.address}</p>
-                        </div>
-
-                        <div class="space-y-1 bg-white p-3 rounded-xl border border-gray-200">
-                            <h4 class="font-bold text-coral-900 text-xs border-b pb-1 mb-1">${isEn ? 'Selected Package Details' : '선택 구성 상세'}</h4>
-                            <p>• ${isEn ? 'Package:' : '돌상 종류:'} ${res.dolTable}</p>
-                            <p>• ${isEn ? 'Screen / Banner:' : '병풍 / 현수막:'} ${res.foldingScreen !== '해당없음' ? res.foldingScreen : res.banner}</p>
-                            <p>• ${isEn ? 'Flowers:' : '꽃 구성:'} ${res.flowers}</p>
-                            <p>• ${isEn ? 'Rice Cake:' : '떡 구성:'} ${res.riceCake}</p>
-                            <p>• ${isEn ? 'Add-ons:' : '추가 옵션:'} ${optionsText.length > 0 ? optionsText.join(', ') : (isEn ? 'None' : '없음')}</p>
-                            ${res.specialNotes ? `<p class="text-gray-500 pt-1 border-t mt-1">• ${isEn ? 'Notes:' : '메모:'} ${res.specialNotes}</p>` : ''}
-                        </div>
-
-                        <div class="bg-coral-500 text-white p-3 rounded-xl flex items-center justify-between font-bold">
-                            <span>${isEn ? 'Estimated Quote Total' : '최종 예상 견적'}</span>
-                            <span class="text-lg font-mono">${res.totalPrice}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center space-x-2 pt-2 no-print">
-                        <button type="button" onclick="window.print()" class="w-full py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-xl text-xs flex items-center justify-center">
-                            <i data-lucide="printer" class="w-3.5 h-3.5 mr-1"></i> ${isEn ? 'Print Statement' : '명세서 인쇄'}
-                        </button>
-                        <button type="button" onclick="closeModal('modalDetail')" class="w-full py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold rounded-xl text-xs">
-                            ${isEn ? 'Close' : '닫기'}
-                        </button>
-                    </div>
-                </div>
-            `;
-
-            document.getElementById('modalDetail').classList.remove('hidden');
-            lucide.createIcons();
-        }
-
-        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
 
         function loadSampleData() {
-            appState.reservations = [
+            const isEn = appState.lang === 'en';
+            const samples = [
                 {
-                    id: 'RES-88201',
-                    createdDate: '2026-09-18 (금)',
-                    eventDate: '2026-10-10 (토)',
-                    eventTime: '12:00 PM',
-                    customerName: '김수현',
+                    id: 'RES-SAMPLE-01',
+                    createdDate: '2026-09-15 14:20',
+                    eventDate: '2026-10-10 12:00 PM',
+                    customerName: '김민지',
                     phoneNumber: '+65 9123 4567',
-                    babyName: '김도윤',
-                    babyGender: '남아',
-                    address: '238881 Orchard Road, #10-12, Singapore',
-                    postalCode: '238881',
+                    babyName: '이지안',
+                    babyGender: '여아',
+                    address: '10 Marina Boulevard, Marina Bay Suites, Singapore 018983',
                     dolTable: '프리미엄',
                     foldingScreen: '병풍 2 (십장생도)',
-                    banner: '해당없음',
+                    banner: '없음 (병풍중심)',
                     flowers: '생화',
                     riceCake: '진짜떡',
                     options: { photo: true, video: false, hanbokMom: true, hanbokDad: true },
-                    specialNotes: '자연광 촬영 위주 부탁드립니다.',
-                    totalPrice: 'SGD 2,700',
-                    status: '대기'
+                    specialNotes: '아기가 약간 졸려할 수 있어서 촬영은 초반에 진행 부탁드립니다.',
+                    totalAmount: 2900,
+                    status: '확정'
                 },
                 {
-                    id: 'RES-88105',
-                    createdDate: '2026-09-15 (화)',
-                    eventDate: '2026-10-17 (토)',
-                    eventTime: '01:00 PM',
-                    customerName: '이지은',
-                    phoneNumber: '+65 8988 1234',
-                    babyName: '박서아',
-                    babyGender: '여아',
-                    address: '098185 Harbourfront Walk, Singapore',
-                    postalCode: '098185',
+                    id: 'RES-SAMPLE-02',
+                    createdDate: '2026-09-18 10:05',
+                    eventDate: '2026-10-17 11:30 AM',
+                    customerName: '박준형',
+                    phoneNumber: '+65 8234 5678',
+                    babyName: '박도현',
+                    babyGender: '남아',
+                    address: '26 Orchard Road, Singapore 238882',
                     dolTable: '베이식',
-                    foldingScreen: '해당없음',
-                    banner: '벚꽃',
+                    foldingScreen: '없음 (베이식)',
+                    banner: '책가도',
                     flowers: '조화',
                     riceCake: '모조떡',
                     options: { photo: true, video: false, hanbokMom: false, hanbokDad: false },
-                    specialNotes: '',
-                    totalPrice: 'SGD 1,550',
-                    status: '확정'
+                    specialNotes: '엘리베이터가 커서 카트 진입 용이합니다.',
+                    totalAmount: 1550,
+                    status: '대기'
                 }
             ];
-            localStorage.setItem('agijagi_reservations', JSON.stringify(appState.reservations));
+
+            appState.reservations = samples;
+            localStorage.setItem('agijagi_reservations', JSON.stringify(samples));
             renderCalendar();
             renderAnalyticsAndList();
-            showToast(appState.lang === 'en' ? '🔄 Sample data restored.' : '🔄 샘플 데이터가 복원되었습니다.', 'info');
+            showToast(isEn ? 'Sample data loaded successfully!' : '샘플 데이터가 로드되었습니다!', 'success');
+        }
+
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            let bgClass = 'bg-slate-900 text-white border-slate-700';
+            if (type === 'success') bgClass = 'bg-emerald-600 text-white border-emerald-500';
+            if (type === 'error') bgClass = 'bg-coral-600 text-white border-coral-500';
+
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-xl shadow-2xl border text-xs sm:text-sm font-semibold flex items-center space-x-2 transform transition-all duration-300 translate-y-2 opacity-0 ${bgClass}`;
+            toast.innerHTML = `<span>${message}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
 
         function copyShareLink() {
+            const isEn = appState.lang === 'en';
             const url = window.location.href;
-            if (navigator.clipboard) navigator.clipboard.writeText(url);
-            else {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url);
+            } else {
                 const input = document.createElement('input');
                 input.value = url;
                 document.body.appendChild(input);
@@ -1976,51 +1955,24 @@
                 document.execCommand('copy');
                 document.body.removeChild(input);
             }
-            showToast(appState.lang === 'en' ? '🔗 Application share link copied to clipboard!' : '🔗 고객 전송용 신청서 링크가 복사되었습니다!', 'success');
+            showToast(isEn ? 'Link copied to clipboard!' : '예약 신청서 링크가 복사되었습니다!', 'success');
         }
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toastContainer');
-            const toast = document.createElement('div');
-            const bgClass = type === 'success' ? 'bg-emerald-600' : type === 'error' ? 'bg-red-600' : 'bg-gray-800';
-            toast.className = `${bgClass} text-white text-xs sm:text-sm font-medium px-4 py-3 rounded-xl shadow-xl flex items-center space-x-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
-            toast.innerHTML = `<span>${message}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3000);
-        }
-
-        /* ---------------------------------- */
-        /* INITIALIZATION                     */
-        /* ---------------------------------- */
         window.onload = function() {
-            const today = new Date();
-            const days = ['일', '월', '화', '수', '목', '금', '토'];
-            const yyyy = today.getFullYear();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const todayWithDay = `${yyyy}-${mm}-${dd} (${days[today.getDay()]})`;
-
-            document.getElementById('createdDateDisplay').value = todayWithDay;
-            document.getElementById('eventDate').min = `${yyyy}-${mm}-${dd}`;
-            document.getElementById('eventDate').value = appState.selectedDate;
+            const todayStr = `${initYyyy}-${initMm}-${initDd}`;
+            document.getElementById('createdDateDisplay').value = todayStr;
+            document.getElementById('eventDate').value = todayStr;
 
             const stored = localStorage.getItem('agijagi_reservations');
             if (stored) {
-                try { 
-                    appState.reservations = JSON.parse(stored); 
-                } catch(e){ 
-                    loadSampleData(); 
-                }
-            } else {
-                loadSampleData();
+                try { appState.reservations = JSON.parse(stored); } catch(e) {}
             }
 
-            // Initialize UI in Korean by default
-            updateLanguageUI();
+            populateSelectOptions();
+            renderCalendar();
+            handleDolTableChange();
+            updateSummaryPreview();
+            lucide.createIcons();
         };
     </script>
 </body>
